@@ -70,7 +70,10 @@
             background-color: #e0f2fe;
             border-color: #3b82f6;
         }
-        
+        .player-card {
+            cursor: grab;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
         .player-card:active {
             cursor: grabbing;
             box-shadow: 0 8px 25px rgba(0,0,0,0.2);
@@ -114,55 +117,6 @@
                  3px  0   0 #000,
                  0   -3px 0 #000,
                  0    3px 0 #000;
-        }
-    
-        /* 터치 최적화 스타일 */
-        .player-card {
-            cursor: grab;
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-            touch-action: none; /* 터치 스크롤 방지 */
-            min-height: 44px; /* 터치 타겟 최소 크기 */
-        }
-        .player-card:active {
-            cursor: grabbing;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-            transform: scale(1.05);
-            z-index: 10;
-        }
-        .drag-handle {
-            cursor: grab;
-            touch-action: none;
-            padding: 8px;
-            min-width: 44px;
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .drag-handle:active {
-            cursor: grabbing;
-        }
-        .droppable-area {
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-            border: 2px dashed #d1d5db;
-            min-height: 80px;
-            touch-action: none;
-        }
-        .droppable-area.drag-over, .droppable-area.touch-over {
-            background-color: #e0f2fe;
-            border-color: #3b82f6;
-        }
-        .dragging {
-            opacity: 0.5;
-            background: #c7d2fe;
-        }
-        /* 터치 피드백 */
-        .touch-feedback {
-            position: fixed;
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0.8;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -1271,7 +1225,7 @@
                                         onDrop={(e) => handleDrop(e, index)}
                                         onDragEnd={() => setDraggedIndex(null)}
                                     >
-                                        <i className="fas fa-bars text-gray-400 drag-handle text-xl p-2"></i>
+                                        <i className="fas fa-bars text-gray-400"></i>
                                         <input type="text" value={config.grades[grade].emoji} onChange={(e) => updateGradeEmoji(grade, e.target.value)} className="w-10 sm:w-12 text-center text-lg sm:text-xl border rounded p-1" />
                                         <span className="text-base sm:text-lg font-bold flex-grow">{grade}{isNaN(parseInt(grade)) ? '팀' : '학년'}</span>
                                         <span className="text-sm text-gray-600">({config.grades[grade].classes}개 반)</span>
@@ -1460,16 +1414,6 @@
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        onCustomDrop={(e) => {
-                            setIsDragOver(false);
-                            const fakeEvent = {
-                                preventDefault: () => {},
-                                dataTransfer: {
-                                    getData: () => JSON.stringify(e.detail.playerInfo)
-                                }
-                            };
-                            onDrop(fakeEvent, { eventId: event.id });
-                        }}
                         className={`droppable-area p-3 rounded-lg ${isDragOver ? 'drag-over' : ''}`}
                     >
                         {assignedPlayers.length > 0 ? (
