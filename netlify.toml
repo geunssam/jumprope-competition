@@ -1,3 +1,17 @@
+# Netlify 배포 설정 - JumpRope Competition
+
+# v19 (레거시) - 현재 배포 중
+# 단일 HTML 파일 (index.html) 직접 서빙
+
+# v20 (JumpRope Master) 빌드 설정 - 개발 완료 시 주석 해제
+# [build]
+#   command = "npm run build"
+#   publish = "dist"
+#
+# [build.environment]
+#   NODE_VERSION = "20"
+
+# 보안 헤더
 [[headers]]
   for = "/*"
   [headers.values]
@@ -6,16 +20,25 @@
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+# JavaScript 파일 캐싱
 [[headers]]
   for = "/*.js"
   [headers.values]
     Cache-Control = "public, max-age=604800, immutable"
 
+# CSS 파일 캐싱
 [[headers]]
   for = "/*.css"
   [headers.values]
     Cache-Control = "public, max-age=604800, immutable"
 
+# HTML 파일 (v19용)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# SPA 리다이렉트 (v20 배포 시 활성화)
 [[redirects]]
   from = "/*"
   to = "/index.html"
