@@ -50,3 +50,10 @@ yarn-error.log*
 # Backup files
 *.backup
 *.bak
+
+# Local Netlify folder
+.netlify
+node_modules/
+.netlify/
+index.html.backup
+index-original.html
