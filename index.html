@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>줄넘기 교내 스포츠클럽대회 현황판 (v19)</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+        /* 애니메이션 및 커스텀 스타일 */
+        @keyframes scoreUpdate { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .score-update { animation: scoreUpdate 0.5s ease-in-out; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .timer-active { animation: pulse 1s infinite; }
+        @keyframes fullscreen-countdown { 0% { transform: scale(0.5) translateY(50px); opacity: 0; } 70% { transform: scale(1.1) translateY(0); opacity: 1; } 100% { transform: scale(1) translateY(-20px); opacity: 0; } }
+        .fullscreen-countdown-animation { animation: fullscreen-countdown 1s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .touch-button { -webkit-tap-highlight-color: transparent; user-select: none; }
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .rainbow-bg {
+            background: linear-gradient(45deg, #ff6b6b, #f06595, #cc5de8, #845ef7, #5c7cfa, #339af0, #22b8cf, #20c997, #51cf66, #94d82d, #ffd43b, #ff922b);
+            background-size: 300% 300%;
+            animation: rainbow 10s ease infinite;
+        }
+        @keyframes podium-rise {
+            0% { transform: scaleY(0); }
+            80% { transform: scaleY(1.1); }
+            100% { transform: scaleY(1); }
+        }
+        @keyframes text-pop-in {
+            0% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes winner-glow {
+            0% { box-shadow: 0 0 15px 5px #fde047; }
+            50% { box-shadow: 0 0 30px 15px #fde047; }
+            100% { box-shadow: 0 0 15px 5px #fde047; }
+        }
+        .podium-bar-animated {
+            transform-origin: bottom;
+            animation: podium-rise 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        .podium-text-animated {
+            animation: text-pop-in 0.5s ease-out 1.5s forwards;
+            opacity: 0;
+        }
+        .winner-glow-animated {
+            animation: winner-glow 2s ease-in-out infinite 1.6s;
+        }
+        .droppable-area {
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+            border: 2px dashed #d1d5db;
+            min-height: 80px;
+        }
+        .droppable-area.drag-over {
+            background-color: #e0f2fe;
+            border-color: #3b82f6;
+        }
+        .player-card {
+            cursor: grab;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .player-card:active {
+            cursor: grabbing;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        .podium-base {
+            background: linear-gradient(to top, #8e9eab, #eef2f3);
+        }
+        .podium-bar {
+            transition: height 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .podium-1 { order: 2; background: linear-gradient(135deg, #fde047, #facc15); border: 4px solid #ca8a04; }
+        .podium-2 { order: 1; background: linear-gradient(135deg, #e5e7eb, #d1d5db); border: 4px solid #9ca3af; }
+        .podium-3 { order: 3; background: linear-gradient(135deg, #f97316, #ea580c); border: 4px solid #9a3412; }
+        .podium-2-teams-1 { background: linear-gradient(135deg, #fde047, #facc15); border: 4px solid #ca8a04; }
+        .podium-2-teams-2 { background: linear-gradient(135deg, #e5e7eb, #d1d5db); border: 4px solid #9ca3af; }
+        .podium-text {
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
+        }
+        .time-input-group .time-adjust-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .time-input-group:hover .time-adjust-btn {
+            opacity: 1;
+        }
+        .dragging {
+            opacity: 0.5;
+            background: #c7d2fe;
+        }
+        .fullscreen-timer-text {
+            color: white;
+            /* [수정됨] text-shadow를 사용하여 여러 브라우저와 호환되는 강력한 테두리 효과를 적용합니다. */
+            text-shadow: 
+                -3px -3px 0 #000,  
+                 3px -3px 0 #000,
+                -3px  3px 0 #000,
+                 3px  3px 0 #000,
+                -3px  0   0 #000,
+                 3px  0   0 #000,
+                 0   -3px 0 #000,
+                 0    3px 0 #000;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, useMemo, memo } = React;
+        const { createPortal } = ReactDOM;
+
+        // --- Helper Functions ---
+        const getResponsiveRecordGridCols = (count) => {
+            if (count <= 1) return `lg:grid-cols-1`;
+            if (count === 2) return `lg:grid-cols-2`;
+            return 'lg:grid-cols-3';
+        };
+        
+        const FlexibleGrid = ({ items, renderItem, columns = 4 }) => {
+            if (!items || items.length === 0) {
+                return null;
+            }
+
+            const rows = [];
+            for (let i = 0; i < items.length; i += columns) {
+                rows.push(items.slice(i, i + columns));
+            }
+
+            const columnClasses = {
+                1: 'grid-cols-1',
+                2: 'grid-cols-2',
+                3: 'grid-cols-3',
+                4: 'grid-cols-4',
+            };
+
+            const gridClass = `grid ${columnClasses[columns] || 'grid-cols-4'} gap-4`;
+
+            return (
+                <div className="space-y-4">
+                    {rows.map((row, rowIndex) => {
+                        const isLastRow = rowIndex === rows.length - 1;
+                        const justifyClass = isLastRow && row.length < columns ? 'justify-start' : 'justify-start';
+                        
+                        return (
+                            <div key={rowIndex} className={`${gridClass} ${justifyClass}`}>
+                                {row.map((item, itemIndex) => (
+                                    <div key={item.key || itemIndex} className={isLastRow && row.length < columns ? '' : 'w-full'}>
+                                        {renderItem(item, itemIndex + rowIndex * columns)}
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+
+        // --- Main App Component ---
+        function JumpRopeApp() {
+            // --- Constants and Initial State ---
+            const predefinedEvents = [
+                { name: '긴줄넘기', type: 'team', emoji: '🪢', duration: 60, maxPlayers: 10 },
+                { name: '번갈아 짝줄넘기', type: 'pair', emoji: '👫', duration: 30, maxTeams: 5 },
+                { name: '마주보며 짝줄넘기', type: 'pair', emoji: '👥', duration: 30, maxTeams: 5 },
+                { name: '나란히 짝줄넘기', type: 'pair', emoji: '🧍🧍‍♀️', duration: 30, maxTeams: 5 },
+                { name: '4인 긴줄넘기', type: 'team', emoji: '🤝', duration: 60, maxPlayers: 4 },
+                { name: '8자마라톤', type: 'team', emoji: '♾️', duration: 90, maxPlayers: 8 },
+                { name: '뛰어들어함께뛰기', type: 'team', emoji: '🏃‍♂️', duration: 60, maxPlayers: 8 },
+                { name: '번갈아뛰기', type: 'individual', emoji: '🔄', duration: 30, maxPlayers: 5 },
+                { name: '한발뛰기', type: 'individual', emoji: '🦵', duration: 30, maxPlayers: 5 },
+                { name: '뒤로뛰기', type: 'individual', emoji: '⬅️', duration: 30, maxPlayers: 5 },
+                { name: '앞으로1단넘기', type: 'individual', emoji: '➡️', duration: 30, maxPlayers: 5 },
+                { name: '2단넘기', type: 'individual', emoji: '🏃', duration: 30, maxPlayers: 5 },
+                { name: '3단넘기', type: 'individual', emoji: ' ', duration: 30, maxPlayers: 5 },
+                { name: '크로스점프', type: 'individual', emoji: '❌', duration: 30, maxPlayers: 5 },
+                { name: '사이드스윙', type: 'individual', emoji: '↔️', duration: 30, maxPlayers: 5 },
+                { name: '릴레이넘기', type: 'team', emoji: '🏃‍♀️', duration: 120, maxPlayers: 10 }
+            ];
+            const emojiList = ['🪢', '👫', '👥', '🧍🧍‍♀️', '🤝', '♾️', '🏃‍♂️', '🔄', '🦵', '⬅️', '➡️', '🏃', '🚀', '❌', '↔️', '🏃‍♀️', '🏅', '🏆', '🥇', '🎉', '✨'];
+            const countdownColors = { '10': 'text-yellow-300', '9': 'text-yellow-400', '8': 'text-yellow-500', '7': 'text-orange-400', '6': 'text-orange-500', '5': 'text-orange-600', '4': 'text-red-400', '3': 'text-red-500', '2': 'text-red-600', '1': 'text-red-700', '0': 'text-red-800', '종료!': 'text-red-800', '준비': 'text-yellow-300' };
+
+            const defaultConfig = {
+                title: '줄넘기 교내 스포츠클럽대회',
+                grades: { 3: { classes: 2, emoji: '🌟', classEmojis: {}, classNames: {}, classOrder: [1,2] }, 4: { classes: 3, emoji: '⭐', classEmojis: {}, classNames: {}, classOrder: [1,2,3] }, 5: { classes: 2, emoji: '✨', classEmojis: {}, classNames: {}, classOrder: [1,2] }, 6: { classes: 3, emoji: '💫', classEmojis: {}, classNames: {}, classOrder: [1,2,3] } },
+                gradeOrder: ['3', '4', '5', '6'],
+                events: [],
+                judges: []
+            };
+
+            // --- State Management ---
+            const [config, setConfig] = useState(null);
+            const [playerData, setPlayerData] = useState(null);
+            const [jumpRecords, setJumpRecords] = useState(null);
+            const [recordHistory, setRecordHistory] = useState([]);
+            const [judgeAssignments, setJudgeAssignments] = useState({});
+
+            const [activeTab, setActiveTab] = useState('settings');
+            const [activeGradeTab, setActiveGradeTab] = useState({});
+            const [isTimerCollapsed, setIsTimerCollapsed] = useState(window.innerWidth < 768);
+            const [isNavCollapsed, setIsNavCollapsed] = useState(true);
+            const [timer, setTimer] = useState({ minutes: 0, seconds: 0 });
+            const [isTimerActive, setIsTimerActive] = useState(false);
+            const [fullscreenAlert, setFullscreenAlert] = useState('');
+            const intervalRef = useRef(null);
+            const countdownRef = useRef(null);
+            const audioContextRef = useRef(null);
+            const currentAudioRef = useRef(null);
+            const [delayTime, setDelayTime] = useState('2');
+            const [isFullscreenTimer, setIsFullscreenTimer] = useState(false);
+            const [saveStatus, setSaveStatus] = useState('저장됨');
+            const [showEventModal, setShowEventModal] = useState(false);
+            const [editingEvent, setEditingEvent] = useState(null);
+            const [newEvent, setNewEvent] = useState({ name: '', type: 'team', emoji: '🏅', duration: '60', maxPlayers: '10', maxTeams: '5', enabledGrades: [] });
+            const [modal, setModal] = useState({ isOpen: false, message: '', onConfirm: null, confirmText: '확인', cancelText: '취소' });
+            const [showPasteModal, setShowPasteModal] = useState(null);
+            const [pasteModalText, setPasteModalText] = useState('');
+            const [showJudgeModal, setShowJudgeModal] = useState(false);
+            const [editingJudge, setEditingJudge] = useState(null);
+            const [newJudge, setNewJudge] = useState({ name: '', emoji: '⚖️' });
+            const [showJudgeListModal, setShowJudgeListModal] = useState(false);
+            const [judgeListText, setJudgeListText] = useState('');
+            const [showJudgeAssignmentModal, setShowJudgeAssignmentModal] = useState(false);
+            const [assignmentTarget, setAssignmentTarget] = useState(null);
+            const [customSounds, setCustomSounds] = useState({ oneMin: null, thirtySec: null, custom: null, drumroll: null, fanfare: null });
+            const [customTimer, setCustomTimer] = useState({ min: '1', sec: '0' });
+            const [fullscreenResultData, setFullscreenResultData] = useState(null);
+
+            const showModal = (message, onConfirm = null, confirmText = '확인', cancelText = '취소') => setModal({ isOpen: true, message, onConfirm, confirmText, cancelText });
+
+            const handleConfigChange = useCallback((newConfig, oldStates) => {
+                try {
+                    const { oldPlayerData, oldJumpRecords } = oldStates;
+                    const safeConfig = {
+                        ...newConfig,
+                        judges: (newConfig.judges || []).map(({assignments, ...rest}) => rest),
+                        events: newConfig.events || [],
+                        gradeOrder: newConfig.gradeOrder || Object.keys(newConfig.grades),
+                    };
+                    safeConfig.events = safeConfig.events.map(event => ({
+                        ...event,
+                        enabledGrades: (event.enabledGrades || []).map(g => isNaN(parseInt(g)) ? g : parseInt(g)).filter(g => g)
+                    }));
+
+                    Object.keys(safeConfig.grades).forEach(grade => {
+                        if (!safeConfig.grades[grade].classEmojis) safeConfig.grades[grade].classEmojis = {};
+                        if (!safeConfig.grades[grade].classNames) safeConfig.grades[grade].classNames = {};
+                        if (!safeConfig.grades[grade].classOrder) {
+                           safeConfig.grades[grade].classOrder = Array.from({length: safeConfig.grades[grade].classes}, (_, i) => i + 1);
+                        }
+                    });
+
+                    const newPlayerData = {};
+                    const newRecordData = {};
+                    Object.entries(safeConfig.grades).forEach(([grade, gradeInfo]) => {
+                        const gradeValue = isNaN(parseInt(grade)) ? grade : parseInt(grade);
+                        newPlayerData[grade] = {};
+                        newRecordData[grade] = {};
+                        for (let i = 1; i <= gradeInfo.classes; i++) {
+                            const classKey = `class${i}`;
+                            const oldClassPlayers = oldPlayerData?.[grade]?.[classKey];
+                            const oldClassRecords = oldJumpRecords?.[grade]?.[classKey];
+                            const classPlayers = { allPlayers: oldClassPlayers?.allPlayers || [] };
+                            const classRecords = {};
+                            const processedPlayerLists = new Set();
+                            safeConfig.events.forEach(event => {
+                                if ((event.enabledGrades || []).includes(gradeValue)) {
+                                    const playerListId = event.playerListId || event.id;
+                                    if (!processedPlayerLists.has(playerListId)) {
+                                        processedPlayerLists.add(playerListId);
+                                        classPlayers[playerListId] = oldClassPlayers?.[playerListId] || [];
+                                    }
+                                    if (oldClassRecords && oldClassRecords[event.id] !== undefined) {
+                                        classRecords[event.id] = oldClassRecords[event.id];
+                                    } else {
+                                        classRecords[event.id] = event.type === 'team' ? 0 : {};
+                                    }
+                                }
+                            });
+                            newPlayerData[grade][classKey] = classPlayers;
+                            newRecordData[grade][classKey] = classRecords;
+                        }
+                    });
+                    setConfig(safeConfig);
+                    setPlayerData(newPlayerData);
+                    setJumpRecords(newRecordData);
+                    setSaveStatus('변경사항 있음');
+                } catch (error) {
+                    console.error('handleConfigChange 오류:', error);
+                    showModal('설정 변경 중 오류가 발생했습니다. 다시 시도해주세요.');
+                }
+            }, []);
+
+            useEffect(() => {
+                const initAudio = () => {
+                    if (!audioContextRef.current) {
+                        try {
+                            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                        } catch (e) {
+                            console.error("Web Audio API is not supported in this browser");
+                        }
+                    }
+                    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                        audioContextRef.current.resume();
+                    }
+                    document.body.removeEventListener('click', initAudio, true);
+                    document.body.removeEventListener('touchstart', initAudio, true);
+                };
+                document.body.addEventListener('click', initAudio, true);
+                document.body.addEventListener('touchstart', initAudio, true);
+
+                return () => {
+                    document.body.removeEventListener('click', initAudio, true);
+                    document.body.removeEventListener('touchstart', initAudio, true);
+                };
+            }, []);
+
+            useEffect(() => {
+                if (isFullscreenTimer || fullscreenResultData) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = 'auto';
+                }
+                return () => {
+                    document.body.style.overflow = 'auto';
+                };
+            }, [isFullscreenTimer, fullscreenResultData]);
+
+
+            useEffect(() => {
+                return () => {
+                    if (currentAudioRef.current) {
+                        currentAudioRef.current.pause();
+                        currentAudioRef.current.currentTime = 0;
+                    }
+                };
+            }, []);
+
+            useEffect(() => {
+                let loadedConfig, loadedPlayers, loadedRecords, loadedAssignments;
+                try {
+                    loadedConfig = JSON.parse(localStorage.getItem('jumpRopeConfig'));
+                    loadedPlayers = JSON.parse(localStorage.getItem('jumpRopePlayerData'));
+                    loadedRecords = JSON.parse(localStorage.getItem('jumpRopeRecords'));
+                    loadedAssignments = JSON.parse(localStorage.getItem('jumpRopeJudgeAssignments'));
+                } catch (e) {
+                    console.error('localStorage 읽기 오류:', e);
+                }
+                if (loadedConfig && loadedPlayers && loadedRecords) {
+                    const migratedAssignments = loadedAssignments || {};
+                    const safeJudges = (loadedConfig.judges || []).map(({assignments, ...rest}) => rest);
+                    const safeConfig = { 
+                        ...defaultConfig, 
+                        ...loadedConfig, 
+                        judges: safeJudges, 
+                        events: loadedConfig.events || [],
+                        gradeOrder: loadedConfig.gradeOrder || Object.keys(loadedConfig.grades)
+                    };
+
+                    setConfig(safeConfig);
+                    setPlayerData(loadedPlayers);
+                    setJumpRecords(loadedRecords);
+                    setJudgeAssignments(migratedAssignments);
+
+                    const firstGradeInOrder = safeConfig.gradeOrder[0];
+                    if (firstGradeInOrder && safeConfig.grades[firstGradeInOrder]) setActiveTab(`grade${firstGradeInOrder}`);
+                    else setActiveTab('settings');
+                    setSaveStatus('저장됨');
+                } else {
+                    handleConfigChange(defaultConfig, {});
+                    setJudgeAssignments({});
+                    setSaveStatus('저장됨');
+
+                    setActiveTab('settings');
+                }
+            }, [handleConfigChange]);
+
+            useEffect(() => {
+                if (saveStatus === '변경사항 있음') {
+                    setSaveStatus('저장 중...');
+                    const handler = setTimeout(() => {
+                        try {
+                            localStorage.setItem('jumpRopeConfig', JSON.stringify(config));
+                            localStorage.setItem('jumpRopePlayerData', JSON.stringify(playerData));
+                            localStorage.setItem('jumpRopeRecords', JSON.stringify(jumpRecords));
+                            localStorage.setItem('jumpRopeJudgeAssignments', JSON.stringify(judgeAssignments));
+                            setSaveStatus('저장됨');
+                        } catch (error) {
+                            console.error('localStorage 저장 오류:', error);
+                            setSaveStatus('저장 실패');
+                        }
+                    }, 2000);
+                    return () => clearTimeout(handler);
+                }
+            }, [config, playerData, jumpRecords, judgeAssignments, saveStatus]);
+
+            const createConfigUpdater = (updateFn) => {
+                return (...args) => {
+                    try {
+                        const newConfig = updateFn(config, ...args);
+                        handleConfigChange(newConfig, {
+                            oldPlayerData: playerData,
+                            oldJumpRecords: jumpRecords,
+                        });
+                    } catch (error) {
+                        console.error('Config 업데이트 오류:', error);
+                        showModal('설정 업데이트 중 오류가 발생했습니다.');
+                    }
+                };
+            };
+            
+            const addGrade = createConfigUpdater((currentConfig, gradeData) => {
+                const { name, emoji } = gradeData;
+                if (!currentConfig.grades[name]) {
+                    const gradeEmojis = { 1: '🌱', 2: '🌿', 3: '🌟', 4: '⭐', 5: '✨', 6: '💫' };
+                    const defaultEmoji = isNaN(parseInt(name)) ? emoji || '🏆' : gradeEmojis[name] || ' ';
+                    const newGrades = { ...currentConfig.grades, [name]: { classes: 1, emoji: defaultEmoji, classEmojis: {}, classNames: {}, classOrder: [1] } };
+                    const newGradeOrder = [...currentConfig.gradeOrder, name];
+                    return { ...currentConfig, grades: newGrades, gradeOrder: newGradeOrder };
+                }
+                return currentConfig;
+            });
+
+            const removeGrades = (gradesToRemove) => showModal(`${gradesToRemove.join(', ')} ${isNaN(parseInt(gradesToRemove[0])) ? '팀을' : '학년을'} 정말 삭제하시겠습니까?`, createConfigUpdater((currentConfig) => {
+                const newGrades = { ...currentConfig.grades };
+                const newGradeOrder = [...currentConfig.gradeOrder];
+                gradesToRemove.forEach(grade => {
+                    delete newGrades[grade];
+                    const index = newGradeOrder.indexOf(grade);
+                    if (index > -1) newGradeOrder.splice(index, 1);
+                });
+                return { ...currentConfig, grades: newGrades, gradeOrder: newGradeOrder };
+            }), '삭제');
+
+            const reorderGrades = createConfigUpdater((currentConfig, sourceIndex, destinationIndex) => {
+                const newOrder = Array.from(currentConfig.gradeOrder);
+                const [removed] = newOrder.splice(sourceIndex, 1);
+                newOrder.splice(destinationIndex, 0, removed);
+                return { ...currentConfig, gradeOrder: newOrder };
+            });
+            
+            const addClass = createConfigUpdater((currentConfig, grade) => {
+                const gradeInfo = currentConfig.grades[grade];
+                const newClassNum = (gradeInfo.classOrder[gradeInfo.classOrder.length - 1] || 0) + 1;
+                const newGradeInfo = {
+                    ...gradeInfo,
+                    classes: gradeInfo.classes + 1,
+                    classOrder: [...gradeInfo.classOrder, newClassNum]
+                };
+                return { ...currentConfig, grades: { ...currentConfig.grades, [grade]: newGradeInfo } };
+            });
+
+            // [FIXED] 반 삭제 로직 수정
+            const deleteClasses = (grade, classNumbersToDelete) => {
+                const currentConfig = config;
+                const gradeInfo = currentConfig.grades[grade];
+                const oldPlayerDataForGrade = playerData[grade];
+                const oldRecordDataForGrade = jumpRecords[grade];
+
+                const remainingClassOrder = gradeInfo.classOrder.filter(cn => !classNumbersToDelete.includes(cn));
+                
+                const newPlayerDataForGrade = {};
+                const newRecordDataForGrade = {};
+                const newClassNames = {};
+                const newClassEmojis = {};
+
+                const remappedClassOrder = remainingClassOrder.map((oldClassNum, index) => {
+                    const newClassNum = index + 1;
+                    if (oldPlayerDataForGrade[`class${oldClassNum}`]) {
+                        newPlayerDataForGrade[`class${newClassNum}`] = oldPlayerDataForGrade[`class${oldClassNum}`];
+                    }
+                    if (oldRecordDataForGrade[`class${oldClassNum}`]) {
+                        newRecordDataForGrade[`class${newClassNum}`] = oldRecordDataForGrade[`class${oldClassNum}`];
+                    }
+                    if (gradeInfo.classNames[oldClassNum]) {
+                        newClassNames[newClassNum] = gradeInfo.classNames[oldClassNum];
+                    }
+                    if (gradeInfo.classEmojis[oldClassNum]) {
+                        newClassEmojis[newClassNum] = gradeInfo.classEmojis[oldClassNum];
+                    }
+                    return newClassNum;
+                });
+
+                const newGradeInfo = {
+                    ...gradeInfo,
+                    classes: remainingClassOrder.length,
+                    classOrder: remappedClassOrder,
+                    classNames: newClassNames,
+                    classEmojis: newClassEmojis
+                };
+                
+                const newConfig = { ...currentConfig, grades: { ...currentConfig.grades, [grade]: newGradeInfo } };
+                const newPlayerData = {...playerData, [grade]: newPlayerDataForGrade};
+                const newJumpRecords = {...jumpRecords, [grade]: newRecordDataForGrade};
+                
+                setConfig(newConfig);
+                setPlayerData(newPlayerData);
+                setJumpRecords(newJumpRecords);
+                setSaveStatus('변경사항 있음');
+            };
+            
+            const reorderClasses = createConfigUpdater((currentConfig, grade, sourceIndex, destIndex) => {
+                const gradeInfo = currentConfig.grades[grade];
+                const newClassOrder = Array.from(gradeInfo.classOrder);
+                const [removed] = newClassOrder.splice(sourceIndex, 1);
+                newClassOrder.splice(destIndex, 0, removed);
+
+                const newGradeInfo = { ...gradeInfo, classOrder: newClassOrder };
+                return { ...currentConfig, grades: { ...currentConfig.grades, [grade]: newGradeInfo } };
+            });
+
+
+            const updateGradeEmoji = (grade, emoji) => { setConfig(prev => ({ ...prev, grades: { ...prev.grades, [grade]: { ...prev.grades[grade], emoji } } })); setSaveStatus('변경사항 있음'); };
+
+            const updateClassEmoji = (grade, classNum, emoji) => {
+                setConfig(prev => {
+                    const newGrades = JSON.parse(JSON.stringify(prev.grades));
+                    if (!newGrades[grade].classEmojis) {
+                        newGrades[grade].classEmojis = {};
+                    }
+                    newGrades[grade].classEmojis[classNum] = emoji;
+                    return { ...prev, grades: newGrades };
+                });
+                setSaveStatus('변경사항 있음');
+            };
+
+            const handleUpdateClassName = (grade, classNum, name) => {
+                setConfig(prev => {
+                    const newGrades = JSON.parse(JSON.stringify(prev.grades));
+                    if (!newGrades[grade].classNames) {
+                        newGrades[grade].classNames = {};
+                    }
+                    newGrades[grade].classNames[classNum] = name;
+                    return { ...prev, grades: newGrades };
+                });
+                setSaveStatus('변경사항 있음');
+            };
+
+            const addOrUpdateEvent = () => {
+                try {
+                    let eventToAdd;
+                    const finalEventData = {
+                        ...newEvent,
+                        duration: parseInt(newEvent.duration) || 60,
+                        maxPlayers: parseInt(newEvent.maxPlayers) || 10,
+                        maxTeams: parseInt(newEvent.maxTeams) || 5,
+                    };
+
+                    if (editingEvent) {
+                        eventToAdd = { ...finalEventData, id: editingEvent.id, playerListId: editingEvent.playerListId || editingEvent.id };
+                    } else {
+                        const newId = `event_${Date.now()}`;
+                        eventToAdd = { ...finalEventData, id: newId, playerListId: newId };
+                    }
+                    eventToAdd.enabledGrades = (eventToAdd.enabledGrades || []).map(g => isNaN(parseInt(g)) ? g : parseInt(g)).filter(g => g);
+                    createConfigUpdater((currentConfig) => {
+                        const newEvents = editingEvent
+                            ? currentConfig.events.map(e => e.id === editingEvent.id ? eventToAdd : e)
+                            : [...currentConfig.events, eventToAdd];
+                        return { ...currentConfig, events: newEvents };
+                    })();
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                    setNewEvent({ name: '', type: 'team', emoji: '🏅', duration: '60', maxPlayers: '10', maxTeams: '5', enabledGrades: [] });
+                } catch (error) {
+                    console.error('종목 추가/수정 오류:', error);
+                    showModal('종목 추가/수정 중 오류가 발생했습니다.');
+                }
+            };
+
+            const removeEvent = (eventId) => showModal('이 종목을 삭제하시겠습니까?', createConfigUpdater((currentConfig) => ({
+                ...currentConfig, events: currentConfig.events.filter(e => e.id !== eventId)
+            })), '삭제');
+
+            const removeJudge = (judgeId) => showModal('이 심판을 삭제하시겠습니까?', createConfigUpdater((currentConfig) => ({
+                ...currentConfig, judges: (currentConfig.judges || []).filter(j => j.id !== judgeId)
+            })), '삭제');
+
+            const moveEvent = createConfigUpdater((currentConfig, index, direction) => {
+                const newEvents = [...currentConfig.events];
+                const targetIndex = index + (direction === 'up' ? -1 : 1);
+                if (targetIndex < 0 || targetIndex >= newEvents.length) return currentConfig;
+                [newEvents[index], newEvents[targetIndex]] = [newEvents[targetIndex], newEvents[index]];
+                return { ...currentConfig, events: newEvents };
+            });
+
+            const handleDuplicateEvent = (eventId) => {
+                createConfigUpdater((currentConfig) => {
+                    const eventToDuplicate = currentConfig.events.find(e => e.id === eventId);
+                    if (!eventToDuplicate) return currentConfig;
+                    const playerListId = eventToDuplicate.playerListId || eventToDuplicate.id;
+                    const newEvent = { ...eventToDuplicate, id: `event_${Date.now()}`, name: eventToDuplicate.name, playerListId: playerListId };
+                    let tempEvents = [...currentConfig.events];
+                    if (!eventToDuplicate.playerListId) {
+                        tempEvents = tempEvents.map(e => e.id === eventId ? { ...e, playerListId: playerListId } : e);
+                    }
+                    const index = tempEvents.findIndex(e => e.id === eventId);
+                    tempEvents.splice(index + 1, 0, newEvent);
+                    showModal(`✅ '${eventToDuplicate.name}' 종목이 복제되었습니다.`);
+                    return { ...currentConfig, events: tempEvents };
+                })();
+            };
+
+            const playBeep = useCallback((isEndSound = false) => {
+                if (!audioContextRef.current) return;
+                const context = audioContextRef.current;
+                const oscillator = context.createOscillator();
+                const gain = context.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(isEndSound ? 900 : 600, context.currentTime);
+                gain.gain.setValueAtTime(1, context.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + 0.5);
+                oscillator.connect(gain);
+                gain.connect(context.destination);
+                oscillator.start(context.currentTime);
+                oscillator.stop(context.currentTime + 0.2);
+            }, []);
+
+            useEffect(() => {
+                if (isTimerActive && (timer.minutes > 0 || timer.seconds > 0)) {
+                    intervalRef.current = setInterval(() => {
+                        setTimer(prev => {
+                            const newTotalSeconds = prev.minutes * 60 + prev.seconds - 1;
+                            if (newTotalSeconds >= 0 && newTotalSeconds <= 9) {
+                                if (countdownRef.current !== newTotalSeconds) {
+                                    countdownRef.current = newTotalSeconds;
+                                    playBeep();
+                                    setFullscreenAlert(`${newTotalSeconds + 1}`);
+                                }
+                            }
+                            if (newTotalSeconds < 0) {
+                                playBeep(true);
+                                setIsTimerActive(false);
+                                setFullscreenAlert('종료!');
+                                setTimeout(() => {
+                                    setFullscreenAlert('');
+                                    if (currentAudioRef.current) {
+                                        currentAudioRef.current.pause();
+                                        currentAudioRef.current.currentTime = 0;
+                                        currentAudioRef.current = null;
+                                    }
+                                    setIsFullscreenTimer(false);
+                                }, 2000);
+                                countdownRef.current = null;
+                                return { minutes: 0, seconds: 0 };
+                            }
+                            return { minutes: Math.floor(newTotalSeconds / 60), seconds: newTotalSeconds % 60 };
+                        });
+                    }, 1000);
+                } else {
+                    clearInterval(intervalRef.current);
+                    countdownRef.current = null;
+                }
+                return () => { clearInterval(intervalRef.current); countdownRef.current = null; };
+            }, [isTimerActive, timer, playBeep]);
+
+            const startTimer = (duration, isCustom = false) => {
+                if (isTimerActive) return;
+                if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+
+                if (currentAudioRef.current) {
+                    currentAudioRef.current.pause();
+                    currentAudioRef.current.currentTime = 0;
+                    currentAudioRef.current = null;
+                }
+
+                let soundSrc = null;
+                if (isCustom) {
+                    soundSrc = customSounds.custom;
+                } else if (duration === 60) {
+                    soundSrc = customSounds.oneMin;
+                } else if (duration === 30) {
+                    soundSrc = customSounds.thirtySec;
+                } else {
+                    soundSrc = customSounds.custom;
+                }
+
+                if (soundSrc) {
+                    const audio = new Audio(soundSrc);
+                    currentAudioRef.current = audio;
+                    audio.play().catch(e => console.error("Audio play failed:", e));
+                }
+
+                setTimer({ minutes: Math.floor(duration / 60), seconds: duration % 60 });
+                setIsFullscreenTimer(true);
+                const startPlayback = () => {
+                    setFullscreenAlert('준비');
+                    // [수정됨] '준비' 알림이 타이머 시작과 함께 사라지도록 수정
+                    setTimeout(() => {
+                        setFullscreenAlert('');
+                        setIsTimerActive(true);
+                    }, parseFloat(delayTime) * 1000);
+                };
+                startPlayback();
+            };
+
+            const stopTimer = () => {
+                setIsTimerActive(false);
+                setTimer({ minutes: 0, seconds: 0 });
+                setFullscreenAlert('');
+                countdownRef.current = null;
+
+                if (currentAudioRef.current) {
+                    currentAudioRef.current.pause();
+                    currentAudioRef.current.currentTime = 0;
+                    currentAudioRef.current = null;
+                }
+            };
+
+            const handleAddPlayerToRoster = (grade, classNum, playerName) => {
+                const trimmedName = playerName.trim();
+                if (!trimmedName) {
+                    showModal('선수 이름이 비어있습니다.');
+                    return false;
+                }
+
+                const newPlayerData = JSON.parse(JSON.stringify(playerData));
+                const roster = newPlayerData[grade][`class${classNum}`].allPlayers;
+
+                if(roster.includes(trimmedName)) {
+                    showModal(`'${trimmedName}' 학생은 이미 명단에 있습니다.`);
+                    return false;
+                }
+
+                roster.push(trimmedName);
+                setPlayerData(newPlayerData);
+                setSaveStatus('변경사항 있음');
+                return true;
+            };
+
+            const handlePlayerAssignment = useCallback((playerInfo, targetEvent) => {
+                if (!config) return;
+                setPlayerData(prevData => {
+                    const { grade, classNum, playerName } = playerInfo;
+                    const { eventId } = targetEvent;
+
+                    const newData = JSON.parse(JSON.stringify(prevData));
+                    const event = config.events.find(e => e.id === eventId);
+                    if (!event) return prevData;
+
+                    const playerListId = event.playerListId || event.id;
+                    const targetList = newData[grade][`class${classNum}`][playerListId];
+
+                    if (event.type === 'team' || event.type === 'individual') {
+                        if (targetList.includes(playerName)) {
+                            showModal(`'${playerName}' 학생은 이미 이 종목에 배정되었습니다.`);
+                            return prevData;
+                        }
+                        if (targetList.length >= event.maxPlayers) {
+                            showModal(`이 종목은 최대 ${event.maxPlayers}명까지 참여할 수 있습니다.`);
+                            return prevData;
+                        }
+                        targetList.push(playerName);
+                    } else if (event.type === 'pair') {
+                        const isAlreadyInPair = targetList.some(p => p.player1 === playerName || p.player2 === playerName);
+                        if (isAlreadyInPair) {
+                            showModal(`'${playerName}' 학생은 이미 이 종목에 배정되었습니다.`);
+                            return prevData;
+                        }
+
+                        const incompletePair = targetList.find(p => p.player1 && !p.player2);
+                        if (incompletePair) {
+                            incompletePair.player2 = playerName;
+                        } else {
+                             if (targetList.length >= event.maxTeams) {
+                                showModal(`이 종목은 최대 ${event.maxTeams}팀까지 참여할 수 있습니다.`);
+                                return prevData;
+                            }
+                            targetList.push({ player1: playerName, player2: '' });
+                        }
+                    }
+                    setSaveStatus('변경사항 있음');
+                    return newData;
+                });
+            }, [config]);
+
+            const handleRemovePlayerFromEvent = useCallback((grade, classNum, eventId, playerToRemove) => {
+                if (!config) return;
+                setPlayerData(prevData => {
+                    const newData = JSON.parse(JSON.stringify(prevData));
+                    const event = config.events.find(e => e.id === eventId);
+                    if (!event) return prevData;
+
+                    const playerListId = event.playerListId || event.id;
+                    const targetList = newData[grade][`class${classNum}`][playerListId];
+
+                    if (event.type === 'team' || event.type === 'individual') {
+                        newData[grade][`class${classNum}`][playerListId] = targetList.filter(p => p !== playerToRemove);
+                    } else if (event.type === 'pair') {
+                        newData[grade][`class${classNum}`][playerListId] = targetList.filter(p => !(p.player1 === playerToRemove.player1 && p.player2 === playerToRemove.player2));
+                    }
+                    setSaveStatus('변경사항 있음');
+                    return newData;
+                });
+            }, [config]);
+
+            const handleBulkPlayerImport = (grade, classNum, eventId, text) => {
+                if (!text?.trim()) return showModal('⚠️ 입력된 내용이 없습니다.');
+                const event = config.events.find(e => e.id === eventId);
+                if (!event) return;
+                const lines = text.trim().split('\n').filter(line => line.trim());
+                if (lines.length === 0) return showModal('⚠️ 유효한 이름이 없습니다.');
+                const newData = JSON.parse(JSON.stringify(playerData));
+                const playerListId = event.playerListId || event.id;
+                const targetData = newData[grade][`class${classNum}`];
+                if (event.type === 'pair') {
+                    targetData[playerListId] = [];
+                    lines.forEach((line) => {
+                        const names = line.split(/[,\t\s]+/).filter(n => n);
+                        if (names.length >= 2) targetData[playerListId].push({ player1: names[0].trim(), player2: names[1].trim() });
+                        else if (names.length === 1) targetData[playerListId].push({ player1: names[0].trim(), player2: '' });
+                    });
+                } else targetData[playerListId] = lines.map(name => name.trim());
+                setPlayerData(newData);
+                setSaveStatus('변경사항 있음');
+                setShowPasteModal(null);
+                setPasteModalText('');
+                showModal('✅ 명단이 입력되었습니다!');
+            };
+
+            const updateRecords = (newRecords) => {
+                setRecordHistory(prev => [...prev.slice(-9), jumpRecords]);
+                setJumpRecords(newRecords);
+                setSaveStatus('변경사항 있음');
+            };
+
+            const handleRecordChange = (grade, classNum, eventId, playerName, delta) => {
+                const newRecords = JSON.parse(JSON.stringify(jumpRecords));
+                const event = config.events.find(e => e.id === eventId);
+                if (!event) return;
+                const targetData = newRecords[grade][`class${classNum}`];
+                if (event.type === 'team') targetData[eventId] = Math.max(0, (targetData[eventId] || 0) + delta);
+                else {
+                    if (!targetData[eventId]) targetData[eventId] = {};
+                    if (!targetData[eventId][playerName]) targetData[eventId][playerName] = 0;
+                    targetData[eventId][playerName] = Math.max(0, targetData[eventId][playerName] + delta);
+                }
+                updateRecords(newRecords);
+            };
+
+            const handleDirectRecordInput = (grade, classNum, eventId, playerName, value) => {
+                const newRecords = JSON.parse(JSON.stringify(jumpRecords));
+                const numValue = parseInt(value) || 0;
+                const event = config.events.find(e => e.id === eventId);
+                if (!event) return;
+                const targetData = newRecords[grade][`class${classNum}`];
+                if (event.type === 'team') targetData[eventId] = Math.max(0, numValue);
+                else {
+                    if (!targetData[eventId]) targetData[eventId] = {};
+                    targetData[eventId][playerName] = Math.max(0, numValue);
+                }
+                updateRecords(newRecords);
+            };
+
+            const handleUndo = () => {
+                if (recordHistory.length > 0) {
+                    const lastState = recordHistory[recordHistory.length - 1];
+                    setJumpRecords(lastState);
+                    setRecordHistory(prev => prev.slice(0, -1));
+                    setSaveStatus('변경사항 있음');
+                } else {
+                    showModal("더 이상 되돌릴 작업이 없습니다.");
+                }
+            };
+
+            const handleManualSave = () => {
+                try {
+                    const dataToSave = {
+                        savedDate: new Date().toLocaleString(),
+                        config,
+                        playerData,
+                        jumpRecords,
+                        judgeAssignments
+                    };
+                    const dataStr = JSON.stringify(dataToSave, null, 2);
+                    const blob = new Blob([dataStr], {type: "application/json"});
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    const date = new Date();
+                    const formattedDate = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+                    link.download = `줄넘기대회_${formattedDate}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    showModal('✅ 파일 저장이 완료되었습니다!');
+                } catch(error) {
+                    console.error("파일 저장 오류:", error);
+                    showModal('❌ 파일 저장에 실패했습니다.');
+                }
+            };
+
+            const calculateTeamTotal = useCallback((grade, classNum) => {
+                if (!jumpRecords || !jumpRecords[grade] || !jumpRecords[grade][`class${classNum}`]) return 0;
+                const records = jumpRecords[grade][`class${classNum}`];
+                let total = 0;
+                Object.values(records).forEach(record => {
+                    if (typeof record === 'number') total += record;
+                    else if (typeof record === 'object') Object.values(record).forEach(count => { total += (Number(count) || 0); });
+                });
+                return total;
+            }, [jumpRecords]);
+
+            const addOrUpdateJudge = () => {
+                let judgeToAdd;
+                if (editingJudge) {
+                    judgeToAdd = { ...newJudge, id: editingJudge.id };
+                } else {
+                    const newId = `judge_${Date.now()}`;
+                    judgeToAdd = { ...newJudge, id: newId };
+                }
+                createConfigUpdater((currentConfig) => {
+                    const currentJudges = currentConfig.judges || [];
+                    const newJudges = editingJudge ? currentJudges.map(j => j.id === editingJudge.id ? judgeToAdd : j) : [...currentJudges, judgeToAdd];
+                    return { ...currentConfig, judges: newJudges };
+                })();
+                setShowJudgeModal(false);
+                setEditingJudge(null);
+                setNewJudge({ name: '', emoji: '⚖️' });
+            };
+
+            const handleBulkJudgeImport = (text) => {
+                if (!text?.trim()) return showModal('⚠️ 입력된 내용이 없습니다.');
+                const names = text.trim().split('\n').filter(line => line.trim()).map(name => name.trim());
+                if (names.length === 0) return showModal('⚠️ 유효한 이름이 없습니다.');
+                createConfigUpdater((currentConfig) => {
+                    const newJudges = names.map(name => ({ id: `judge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, name: name, emoji: '⚖️' }));
+                    const currentJudges = currentConfig.judges || [];
+                    return { ...currentConfig, judges: [...currentJudges, ...newJudges] };
+                })();
+                setShowJudgeListModal(false);
+                setJudgeListText('');
+                showModal(`✅ ${names.length}명의 심판이 추가되었습니다!`);
+            };
+
+            const handleUpdateJudgeAssignments = useCallback((key, judgeIds) => {
+                setJudgeAssignments(prev => ({
+                    ...prev,
+                    [key]: judgeIds
+                }));
+                setSaveStatus('변경사항 있음');
+            }, []);
+
+            const handleClassPlayersImport = (grade, classNum, text) => {
+                if (!text?.trim()) return showModal('⚠️ 입력된 내용이 없습니다.');
+                const names = text.trim().split('\n').filter(line => line.trim()).map(name => name.trim());
+                if (names.length === 0) return showModal('⚠️ 유효한 이름이 없습니다.');
+                const newData = JSON.parse(JSON.stringify(playerData));
+                newData[grade][`class${classNum}`].allPlayers = names;
+                setPlayerData(newData);
+                setSaveStatus('변경사항 있음');
+                setShowPasteModal(null);
+                setPasteModalText('');
+                showModal('✅ 반 명단이 입력되었습니다!');
+            };
+
+            const handleCopyPlayerList = (grade, classNum, eventId) => {
+                const event = config.events.find(e => e.id === eventId);
+                if (!event) return;
+                const playerListId = event.playerListId || event.id;
+                const players = playerData[grade]?.[`class${classNum}`]?.[playerListId];
+                if (!players?.length) return showModal('복사할 명단이 없습니다.');
+                let textToCopy = (event.type === 'pair') ? players.map(p => `${p.player1 || ''}\t${p.player2 || ''}`).join('\n') : players.join('\n');
+                if (!textToCopy.trim()) return showModal('복사할 명단이 없습니다.');
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try { document.execCommand('copy'); showModal(`📋 ${event.name} 명단이 복사되었습니다.`); } catch (err) { showModal('❌ 복사에 실패했습니다.'); }
+                document.body.removeChild(textArea);
+            };
+            const handleFileUpload = (e, grade, classNum, eventId) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { let content = ev.target.result; if (file.name.endsWith('.csv')) content = content.split('\n').map(line => line.split(',').map(name => name.trim()).filter(name => name).join('\n')).join('\n'); handleBulkPlayerImport(grade, classNum, eventId, content); } catch (error) { showModal('❌ 파일을 읽을 수 없습니다.'); } }; reader.readAsText(file, 'UTF-8'); } e.target.value = null; };
+            const clearClassPlayerList = (grade, classNum) => {
+                showModal('반 전체 명단을 초기화하시겠습니까?', () => {
+                    const newData = JSON.parse(JSON.stringify(playerData));
+                    newData[grade][`class${classNum}`].allPlayers = [];
+                    Object.keys(newData[grade][`class${classNum}`]).forEach(key => { if (key !== 'allPlayers') newData[grade][`class${classNum}`][key] = []; });
+                    setPlayerData(newData);
+                    setSaveStatus('변경사항 있음');
+                    showModal('✅ 명단이 초기화되었습니다.');
+                }, '초기화');
+            };
+
+            const clearEventRecords = (eventId, grade, classNum) => {
+                showModal('이 종목의 기록을 초기화하시겠습니까?', () => {
+                    const newRecords = JSON.parse(JSON.stringify(jumpRecords));
+                    const event = config.events.find(e => e.id === eventId);
+                    if (!event) return;
+                    const targetData = newRecords[grade][`class${classNum}`];
+                    if (event.type === 'team') targetData[eventId] = 0;
+                    else targetData[eventId] = {};
+                    updateRecords(newRecords);
+                }, '초기화');
+            };
+
+            const handleRemovePlayerFromRoster = (grade, classNum, playerName) => {
+                showModal(`'${playerName}' 학생을 명단에서 삭제하시겠습니까?`, () => {
+                    const newData = JSON.parse(JSON.stringify(playerData));
+                    const targetRoster = newData[grade][`class${classNum}`].allPlayers;
+
+                    const index = targetRoster.indexOf(playerName);
+                    if (index > -1) {
+                        targetRoster.splice(index, 1);
+                        setPlayerData(newData);
+                        setSaveStatus('변경사항 있음');
+                        showModal(`✅ '${playerName}' 학생이 명단에서 삭제되었습니다.`);
+                    }
+                }, '삭제');
+            };
+
+            const handleCustomStart = () => {
+                const totalSeconds = (parseInt(customTimer.min) || 0) * 60 + (parseInt(customTimer.sec) || 0);
+                if (totalSeconds > 0) {
+                    startTimer(totalSeconds, true);
+                }
+            };
+
+            // --- Render ---
+            if (!config || !playerData || !jumpRecords) {
+                return <div className="flex items-center justify-center min-h-screen font-bold text-xl">Loading...</div>;
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 flex flex-col">
+                    {fullscreenResultData && createPortal(
+                        <ResultsContent
+                            key={fullscreenResultData.grade}
+                            {...fullscreenResultData}
+                            onClose={() => setFullscreenResultData(null)}
+                        />,
+                        document.body
+                    )}
+
+                    <div className="flex-grow">
+                        {/* Modals and Fullscreen Alerts */}
+                        {fullscreenAlert && <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100]"><div key={fullscreenAlert} className={`font-black text-[25vw] fullscreen-countdown-animation ${countdownColors[fullscreenAlert] || 'text-red-800'}`}>{fullscreenAlert}</div></div>}
+                        {modal.isOpen && <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 text-center animate-fadeIn"><p className="text-2xl mb-6 whitespace-pre-wrap">{modal.message}</p><div className="flex gap-3 justify-center">{modal.onConfirm && <button onClick={() => { modal.onConfirm(); setModal({ isOpen: false }); }} className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg touch-button text-lg">{modal.confirmText}</button>}<button onClick={() => setModal({ isOpen: false })} className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg touch-button text-lg">{modal.onConfirm ? modal.cancelText : '닫기'}</button></div></div></div>}
+                        {showPasteModal && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto animate-fadeIn"><h3 className="text-2xl sm:text-3xl font-bold mb-4">{showPasteModal.isClassList ? `${showPasteModal.grade}학년 ${showPasteModal.classNum}반 전체 명단` : `${showPasteModal.grade}학년 ${showPasteModal.classNum}반 - ${showPasteModal.eventName} 명단`} 붙여넣기</h3><textarea className="w-full h-64 p-4 border-2 border-gray-300 rounded-lg text-lg" placeholder={showPasteModal.isClassList ? `예시:\n김철수\n이영희\n박민수` : `예시:\n김철수\n이영희\n\n또는 (2인 1조):\n김철수, 이영희`} value={pasteModalText} onChange={(e) => setPasteModalText(e.target.value)} /><div className="flex gap-3 mt-4 justify-end"><button onClick={() => { setShowPasteModal(null); setPasteModalText(''); }} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg touch-button text-lg">취소</button><button onClick={() => showPasteModal.isClassList ? handleClassPlayersImport(showPasteModal.grade, showPasteModal.classNum, pasteModalText) : handleBulkPlayerImport(showPasteModal.grade, showPasteModal.classNum, showPasteModal.eventId, pasteModalText)} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg touch-button text-lg">확인</button></div></div></div>}
+                        {isFullscreenTimer && <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center"><div className={`text-[25vw] font-black fullscreen-timer-text ${isTimerActive ? 'timer-active' : ''}`}>{String(timer.minutes).padStart(2, '0')}:{String(timer.seconds).padStart(2, '0')}</div><div className="mt-10 flex gap-4"><button onClick={() => startTimer(60, false)} className="px-8 py-4 bg-blue-500 text-white font-bold text-2xl rounded-xl shadow-2xl touch-button">1분</button><button onClick={() => startTimer(30, false)} className="px-8 py-4 bg-green-500 text-white font-bold text-2xl rounded-xl shadow-2xl touch-button">30초</button><button onClick={stopTimer} className="px-8 py-4 bg-red-500 text-white font-bold text-2xl rounded-xl shadow-2xl touch-button">정지</button></div><button onClick={() => { setIsFullscreenTimer(false); if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current.currentTime = 0; currentAudioRef.current = null; } }} className="absolute top-8 right-8 px-6 py-3 bg-gray-700 text-white font-bold text-2xl rounded-lg touch-button z-10">✕ 닫기</button></div>}
+                        {showEventModal && <EventModal config={config} editingEvent={editingEvent} newEvent={newEvent} setNewEvent={setNewEvent} addOrUpdateEvent={addOrUpdateEvent} setShowEventModal={setShowEventModal} setEditingEvent={setEditingEvent} predefinedEvents={predefinedEvents} emojiList={emojiList} />}
+                        {showJudgeModal && <JudgeModal editingJudge={editingJudge} newJudge={newJudge} setNewJudge={setNewJudge} addOrUpdateJudge={addOrUpdateJudge} setShowJudgeModal={setShowJudgeModal} setEditingJudge={setEditingJudge} />}
+                        {showJudgeListModal && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto animate-fadeIn"><h3 className="text-2xl sm:text-3xl font-bold mb-4">심판 명단 일괄 입력</h3><textarea className="w-full h-64 p-4 border-2 border-gray-300 rounded-lg text-lg" placeholder="심판 이름을 한 줄에 하나씩 입력해주세요.&#10;&#10;예시:&#10;김철수&#10;이영희&#10;박민수" value={judgeListText} onChange={(e) => setJudgeListText(e.target.value)} /><div className="flex gap-3 mt-4 justify-end"><button onClick={() => { setShowJudgeListModal(false); setJudgeListText(''); }} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg touch-button text-lg">취소</button><button onClick={() => handleBulkJudgeImport(judgeListText)} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg touch-button text-lg">추가</button></div></div></div>}
+                        {showJudgeAssignmentModal && <JudgeAssignmentModal targetInfo={assignmentTarget} allJudges={config.judges} classPlayers={playerData[assignmentTarget.grade][`class${assignmentTarget.classNum}`].allPlayers} assignedJudgeIds={judgeAssignments[assignmentTarget.key] || []} onSave={handleUpdateJudgeAssignments} onClose={() => setShowJudgeAssignmentModal(false)} />}
+
+                        {/* Header */}
+                        <header className="bg-gradient-to-r from-purple-600 to-pink-600 shadow-2xl p-4"><h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-center text-white flex items-center justify-center gap-2 sm:gap-3"><span className="text-5xl sm:text-6xl lg:text-7xl">🏃‍♀️</span>{config.title}<span className="text-5xl sm:text-6xl lg:text-7xl">🏃‍♂️</span></h1></header>
+
+                        {/* Timer Section */}
+                        <div className="bg-white/90 backdrop-blur shadow-lg sticky top-0 z-20">
+                            <div className="flex items-center justify-between p-2 sm:p-3">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setIsTimerCollapsed(!isTimerCollapsed)} className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-bold text-2xl transition-all touch-button">
+                                        <span className="text-3xl">{isTimerCollapsed ? '▼' : '▲'}</span>
+                                        <span className="text-3xl">⏱️</span>
+                                        <span className="hidden sm:inline">타이머</span>
+                                    </button>
+                                    <button onClick={() => setIsNavCollapsed(!isNavCollapsed)} className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-bold text-2xl transition-all touch-button">
+                                        <span className="text-3xl">{isNavCollapsed ? '▼' : '▲'}</span>
+                                        <span className="text-3xl">📂</span>
+                                        <span className="hidden sm:inline">탭 메뉴</span>
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    {isTimerCollapsed && <div className="hidden md:flex items-center gap-2 sm:gap-4"><div className={`text-4xl font-black ${isTimerActive ? 'text-red-600' : 'text-gray-800'}`}>{String(timer.minutes).padStart(2, '0')}:{String(timer.seconds).padStart(2, '0')}</div><div className="flex gap-1 sm:gap-2"><button onClick={() => startTimer(60, false)} className="px-3 py-2 sm:px-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow text-lg touch-button">1분</button><button onClick={() => startTimer(30, false)} className="px-3 py-2 sm:px-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow text-lg touch-button">30초</button><button onClick={stopTimer} className="px-3 py-2 sm:px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow text-lg touch-button">정지</button><button onClick={() => setIsFullscreenTimer(true)} className="px-2 py-2 sm:px-3 bg-gray-700 hover:bg-gray-800 text-white font-bold rounded-lg shadow text-xl touch-button">🖥️</button></div></div>}
+                                    <AppMenu saveData={() => { localStorage.setItem('jumpRopeConfig', JSON.stringify(config)); localStorage.setItem('jumpRopePlayerData', JSON.stringify(playerData)); localStorage.setItem('jumpRopeRecords', JSON.stringify(jumpRecords)); localStorage.setItem('jumpRopeJudgeAssignments', JSON.stringify(judgeAssignments)); showModal('수동 저장이 완료되었습니다.'); }} loadData={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data.config && data.playerData && data.jumpRecords) { handleConfigChange(data.config, { oldPlayerData: data.playerData, oldJumpRecords: data.jumpRecords }); setJudgeAssignments(data.judgeAssignments || {}); setSaveStatus('저장됨'); showModal(`✅ ${data.savedDate || ''}에 저장된 데이터를 불러왔습니다!`); } else { throw new Error("Invalid file format"); } } catch (error) { console.error("파일 읽기 오류:", error); showModal('❌ 파일을 읽을 수 없습니다.'); } }; reader.readAsText(file); } e.target.value = null; }} handleSoundUpload={(e, type) => { const file = e.target.files[0]; if (file) { const url = URL.createObjectURL(file); setCustomSounds(prev => ({...prev, [type]: url})); setSaveStatus('변경사항 있음'); const typeKorean = { oneMin: '1분', thirtySec: '30초', custom: '커스텀 시간', drumroll: '두구두구', fanfare: '팡파레' }; showModal(`✅ ${typeKorean[type]} 음원이 업로드되었습니다!`); } }} saveStatus={saveStatus} handleUndo={handleUndo} recordHistory={recordHistory} handleManualSave={handleManualSave} />
+                                </div>
+                            </div>
+                            {!isTimerCollapsed && <TimerControlPanel startTimer={startTimer} stopTimer={stopTimer} isTimerActive={isTimerActive} timer={timer} setTimer={setTimer} delayTime={delayTime} setDelayTime={setDelayTime} customTimer={customTimer} setCustomTimer={setCustomTimer} setIsFullscreenTimer={setIsFullscreenTimer} handleCustomStart={handleCustomStart} />}
+                            
+                            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isNavCollapsed ? 'max-h-0' : 'max-h-40'}`}>
+                                <nav className="flex justify-center gap-2 p-2 sm:p-3 bg-white/80 backdrop-blur shadow-lg flex-wrap">
+                                    {config.gradeOrder.map(grade => (<button key={grade} onClick={() => setActiveTab(`grade${grade}`)} className={`flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 font-bold text-2xl transition-all duration-300 touch-button ${activeTab === `grade${grade}` ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-xl scale-105 rounded-xl' : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md rounded-xl'}`}><span className="text-3xl">{config.grades[grade].emoji}</span> {grade}{isNaN(parseInt(grade)) ? '팀' : '학년'}</button>))}
+                                    <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 font-bold text-2xl transition-all duration-300 touch-button ${activeTab === 'settings' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-xl scale-105 rounded-xl' : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md rounded-xl'}`}><span className="text-3xl">⚙️</span> 설정</button>
+                                </nav>
+                            </div>
+                        </div>
+
+                        {/* Main Content */}
+                        <main className="p-2 sm:p-4">
+                            <div className="bg-white/90 backdrop-blur rounded-2xl shadow-2xl p-3 sm:p-6 relative min-h-[60vh]">
+                                {(() => {
+                                    if (activeTab === 'settings') {
+                                        return <SettingsTabContent config={config} setConfig={c => { setConfig(c); setSaveStatus('변경사항 있음'); }} addGrade={addGrade} removeGrades={removeGrades} reorderGrades={reorderGrades} setShowEventModal={setShowEventModal} setEditingEvent={setEditingEvent} setNewEvent={setNewEvent} removeEvent={removeEvent} moveEvent={moveEvent} handleDuplicateEvent={handleDuplicateEvent} showModal={showModal} defaultConfig={defaultConfig} handleConfigChange={(newConf) => handleConfigChange(newConf, { oldPlayerData: playerData, oldJumpRecords: jumpRecords })} setShowJudgeModal={setShowJudgeModal} setEditingJudge={setEditingJudge} setNewJudge={setNewJudge} removeJudge={removeJudge} setShowJudgeListModal={setShowJudgeListModal} setJudgeListText={setJudgeListText} />;
+                                    }
+
+                                    const gradeMatch = activeTab.match(/^grade(.+)$/);
+                                    if (gradeMatch && config.grades[gradeMatch[1]]) {
+                                        const grade = gradeMatch[1];
+                                        return <GradeTabContent key={grade} grade={grade} gradeInfo={config.grades[grade]} config={config} playerData={playerData} jumpRecords={jumpRecords} judgeAssignments={judgeAssignments} handlePlayerAssignment={handlePlayerAssignment} handleRemovePlayerFromEvent={handleRemovePlayerFromEvent} handleRecordChange={handleRecordChange} handleDirectRecordInput={handleDirectRecordInput} calculateTeamTotal={calculateTeamTotal} activeGradeTab={activeGradeTab} setActiveGradeTab={setActiveGradeTab} clearEventRecords={clearEventRecords} setShowPasteModal={setShowPasteModal} handleFileUpload={handleFileUpload} handleCopyPlayerList={handleCopyPlayerList} clearClassPlayerList={clearClassPlayerList} handleRemovePlayerFromRoster={handleRemovePlayerFromRoster} setAssignmentTarget={setAssignmentTarget} setShowJudgeAssignmentModal={setShowJudgeAssignmentModal} customSounds={customSounds} handleAddPlayerToRoster={handleAddPlayerToRoster} handleUpdateClassName={handleUpdateClassName} updateClassEmoji={updateClassEmoji} setFullscreenResultData={setFullscreenResultData} audioContextRef={audioContextRef} addClass={addClass} deleteClasses={deleteClasses} reorderClasses={reorderClasses} showModal={showModal} />;
+                                    }
+
+                                    const firstGradeInOrder = config.gradeOrder[0];
+                                    if (firstGradeInOrder && config.grades[firstGradeInOrder]) {
+                                         setActiveTab(`grade${firstGradeInOrder}`);
+                                    } else {
+                                         setActiveTab('settings');
+                                    }
+
+                                    return <div className="text-center text-gray-500 py-8">Loading...</div>;
+                                })()}
+                            </div>
+                        </main>
+                    </div>
+                    <footer className="text-center py-4 text-lg font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600">
+                        ✨ Made By 근쌤 With Gemini & Claude(25.07.09) ✨
+                    </footer>
+                </div>
+            );
+        }
+
+        // --- Child Components ---
+
+        const EventModal = memo(({ config, editingEvent, newEvent, setNewEvent, addOrUpdateEvent, setShowEventModal, setEditingEvent, predefinedEvents, emojiList }) => {
+            const handleNumericChange = (e, field) => {
+                const { value } = e.target;
+                if (/^\d*$/.test(value)) {
+                    setNewEvent(prev => ({ ...prev, [field]: value }));
+                }
+            };
+            const adjustNumber = (field, amount) => {
+                setNewEvent(prev => {
+                    const currentValue = parseInt(prev[field]) || 0;
+                    return { ...prev, [field]: String(Math.max(0, currentValue + amount)) };
+                });
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 animate-fadeIn max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-2xl font-bold mb-4">{editingEvent ? '종목 수정' : '종목 추가'}</h3>
+                        <div className="space-y-4">
+                            {!editingEvent && <div><label className="block text-sm font-bold mb-1">사전 정의된 종목 선택</label><select onChange={(e) => { if (e.target.value) { const selectedEvent = predefinedEvents.find(pe => pe.name === e.target.value); if (selectedEvent) setNewEvent({ ...newEvent, ...selectedEvent, duration: String(selectedEvent.duration), maxPlayers: String(selectedEvent.maxPlayers), maxTeams: String(selectedEvent.maxTeams), enabledGrades: newEvent.enabledGrades }); } }} className="w-full px-3 py-2 border rounded-lg text-lg"><option value="">종목을 선택하거나 아래에 직접 입력하세요...</option>{predefinedEvents.map(event => <option key={event.name} value={event.name}>{event.emoji} {event.name}</option>)}</select></div>}
+                            <div><label className="block text-sm font-bold mb-1">종목명</label><input type="text" value={newEvent.name} onChange={(e) => setNewEvent({...newEvent, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-lg" /></div>
+                            <div><label className="block text-sm font-bold mb-1">이모지</label><div className="flex gap-2"><select value={emojiList.includes(newEvent.emoji) ? newEvent.emoji : 'custom'} onChange={(e) => { if (e.target.value !== 'custom') setNewEvent({...newEvent, emoji: e.target.value}); }} className="px-3 py-2 border rounded-lg text-lg"><option value="custom">직접</option>{emojiList.map(emoji => <option key={emoji} value={emoji}>{emoji}</option>)}</select><input type="text" value={newEvent.emoji} onChange={(e) => setNewEvent({...newEvent, emoji: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-lg" /></div></div>
+                            <div><label className="block text-sm font-bold mb-1">종목 유형</label><select value={newEvent.type} onChange={(e) => setNewEvent({...newEvent, type: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-lg" disabled={!!editingEvent}><option value="team">팀 단위</option><option value="pair">2인 1조</option><option value="individual">개인전</option></select></div>
+                            <div className="flex items-center gap-2"><label className="block text-sm font-bold mb-1 w-24">시간 (초)</label><button onClick={() => adjustNumber('duration', -1)} className="px-3 py-1 bg-gray-200 rounded">-</button><input type="text" inputMode="numeric" value={newEvent.duration} onChange={(e) => handleNumericChange(e, 'duration')} className="w-full px-3 py-2 border rounded-lg text-lg text-center" /><button onClick={() => adjustNumber('duration', 1)} className="px-3 py-1 bg-gray-200 rounded">+</button></div>
+                            {(newEvent.type === 'team' || newEvent.type === 'individual') && <div className="flex items-center gap-2"><label className="block text-sm font-bold mb-1 w-24">최대 인원</label><button onClick={() => adjustNumber('maxPlayers', -1)} className="px-3 py-1 bg-gray-200 rounded">-</button><input type="text" inputMode="numeric" value={newEvent.maxPlayers} onChange={(e) => handleNumericChange(e, 'maxPlayers')} className="w-full px-3 py-2 border rounded-lg text-lg text-center" /><button onClick={() => adjustNumber('maxPlayers', 1)} className="px-3 py-1 bg-gray-200 rounded">+</button></div>}
+                            {newEvent.type === 'pair' && <div className="flex items-center gap-2"><label className="block text-sm font-bold mb-1 w-24">최대 팀 수</label><button onClick={() => adjustNumber('maxTeams', -1)} className="px-3 py-1 bg-gray-200 rounded">-</button><input type="text" inputMode="numeric" value={newEvent.maxTeams} onChange={(e) => handleNumericChange(e, 'maxTeams')} className="w-full px-3 py-2 border rounded-lg text-lg text-center" /><button onClick={() => adjustNumber('maxTeams', 1)} className="px-3 py-1 bg-gray-200 rounded">+</button></div>}
+                            <div><label className="block text-sm font-bold mb-1">적용 학년/팀 (하나 이상 선택)</label><div className="flex gap-4 flex-wrap text-lg">{Object.keys(config.grades).map(grade => (<label key={grade} className="flex items-center gap-2"><input type="checkbox" checked={(newEvent.enabledGrades || []).includes(isNaN(parseInt(grade)) ? grade : parseInt(grade))} onChange={(e) => {const gradeValue = isNaN(parseInt(grade)) ? grade : parseInt(grade); setNewEvent(prev => ({...prev, enabledGrades: e.target.checked ? [...(prev.enabledGrades || []), gradeValue] : (prev.enabledGrades || []).filter(g => g !== gradeValue)}));}} className="h-5 w-5" />{grade}{isNaN(parseInt(grade)) ? '팀' : '학년'}</label>))}</div></div>
+                        </div>
+                        <div className="flex gap-3 mt-6 justify-end"><button onClick={() => { setShowEventModal(false); setEditingEvent(null); }} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg touch-button text-lg">취소</button><button onClick={addOrUpdateEvent} disabled={!newEvent.name || (newEvent.enabledGrades || []).length === 0} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed touch-button text-lg">{editingEvent ? '수정' : '추가'}</button></div>
+                    </div>
+                </div>
+            );
+        });
+
+        const JudgeModal = memo(({ editingJudge, newJudge, setNewJudge, addOrUpdateJudge, setShowJudgeModal, setEditingJudge }) => {
+            const judgeEmojis = ['⚖️', '👨‍⚖️', '👩‍⚖️', '🧑‍⚖️', '🎯', '📋', '✅', '🏁', '🎖️'];
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 animate-fadeIn">
+                        <h3 className="text-2xl font-bold mb-4">{editingJudge ? '심판 수정' : '심판 추가'}</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-sm font-bold mb-1">심판명</label><input type="text" value={newJudge.name} onChange={(e) => setNewJudge({...newJudge, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg text-lg" /></div>
+                            <div><label className="block text-sm font-bold mb-1">이모지</label><div className="flex gap-2 flex-wrap">{judgeEmojis.map(emoji => (<button key={emoji} onClick={() => setNewJudge({...newJudge, emoji})} className={`p-2 text-2xl rounded-lg border-2 ${newJudge.emoji === emoji ? 'border-purple-500 bg-purple-100' : 'border-gray-300'}`}>{emoji}</button>))}</div></div>
+                        </div>
+                        <div className="flex gap-3 mt-6 justify-end"><button onClick={() => { setShowJudgeModal(false); setEditingJudge(null); }} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg touch-button text-lg">취소</button><button onClick={addOrUpdateJudge} disabled={!newJudge.name} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed touch-button text-lg">{editingJudge ? '수정' : '추가'}</button></div>
+                    </div>
+                </div>
+            );
+        });
+
+        const SettingsTabContent = memo(({ config, setConfig, addGrade, removeGrades, reorderGrades, setShowEventModal, setEditingEvent, setNewEvent, removeEvent, moveEvent, handleDuplicateEvent, showModal, defaultConfig, handleConfigChange, setShowJudgeModal, setEditingJudge, setNewJudge, removeJudge, setShowJudgeListModal, setJudgeListText }) => {
+            const [draggedIndex, setDraggedIndex] = useState(null);
+
+            const handleAddTeam = () => {
+                const teamName = prompt('팀 이름을 입력하세요:');
+                if (teamName && teamName.trim()) {
+                    const teamEmoji = prompt(`'${teamName}' 팀을 대표할 이모지를 입력하세요:`, '🏆');
+                    addGrade({name: teamName.trim(), emoji: teamEmoji || '🏆'});
+                }
+            };
+            
+            const handleDragStart = (e, index) => {
+                setDraggedIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+            };
+            
+            const handleDragOver = (e, index) => {
+                e.preventDefault();
+            };
+
+            const handleDrop = (e, index) => {
+                e.preventDefault();
+                if (draggedIndex === null) return;
+                reorderGrades(draggedIndex, index);
+                setDraggedIndex(null);
+            };
+
+            return (
+                <div className="animate-fadeIn">
+                    <h2 className="text-3xl lg:text-4xl font-black mb-6 lg:mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 flex items-center gap-4"><span className="text-4xl lg:text-5xl">⚙️</span> 대회 설정</h2>
+                    <div className="space-y-4">
+                        <div className="p-3 sm:p-4 bg-gray-50 rounded-xl shadow-inner"><h3 className="text-lg sm:text-xl font-bold mb-3">대회명</h3><input type="text" value={config.title} onChange={(e) => {setConfig(prev => ({ ...prev, title: e.target.value })); setSaveStatus('변경사항 있음');}} className="w-full px-3 py-2 text-base sm:text-lg border-2 rounded-lg" /></div>
+                        <div className="p-3 sm:p-4 bg-gray-50 rounded-xl shadow-inner">
+                            <h3 className="text-lg sm:text-xl font-bold mb-3">참가 학년/팀 설정</h3>
+                            <div className="max-h-64 overflow-y-auto space-y-3">
+                                {config.gradeOrder.map((grade, index) => (
+                                    <div 
+                                        key={grade} 
+                                        className={`p-3 bg-white rounded-lg shadow flex items-center gap-2 cursor-move ${draggedIndex === index ? 'dragging' : ''}`}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, index)}
+                                        onDragOver={(e) => handleDragOver(e, index)}
+                                        onDrop={(e) => handleDrop(e, index)}
+                                        onDragEnd={() => setDraggedIndex(null)}
+                                    >
+                                        <i className="fas fa-bars text-gray-400"></i>
+                                        <input type="text" value={config.grades[grade].emoji} onChange={(e) => updateGradeEmoji(grade, e.target.value)} className="w-10 sm:w-12 text-center text-lg sm:text-xl border rounded p-1" />
+                                        <span className="text-base sm:text-lg font-bold flex-grow">{grade}{isNaN(parseInt(grade)) ? '팀' : '학년'}</span>
+                                        <span className="text-sm text-gray-600">({config.grades[grade].classes}개 반)</span>
+                                        <button onClick={() => removeGrades([grade])} className="ml-auto px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded text-xs touch-button">삭제</button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 flex gap-2 flex-wrap"><button onClick={handleAddTeam} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg touch-button">➕ 팀 추가</button>{[1, 2, 3, 4, 5, 6].map(grade => !config.grades[grade] && (<button key={grade} onClick={() => addGrade({name: String(grade)})} className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg text-sm touch-button">{grade}학년 추가</button>))}</div>
+                        </div>
+                        <div className="p-3 sm:p-4 bg-gray-50 rounded-xl shadow-inner"><div className="flex flex-wrap items-center justify-between gap-2 mb-3"><h3 className="text-lg sm:text-xl font-bold">심판 설정</h3><div className="flex gap-2"><button onClick={() => { setShowJudgeListModal(true); setJudgeListText(''); }} className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg text-sm touch-button">📋 명단 입력</button><button onClick={() => { setEditingJudge(null); setNewJudge({ name: '', emoji: '⚖️' }); setShowJudgeModal(true);}} className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg text-sm touch-button">➕ 개별 추가</button></div></div><div className="max-h-36 overflow-y-auto space-y-2">{(config.judges || []).map(judge => (<div key={judge.id} className="flex items-center gap-2 p-2 bg-white rounded-lg shadow"><span className="text-lg">{judge.emoji}</span><span className="flex-1 font-bold text-sm">{judge.name}</span><button onClick={() => { setEditingJudge(judge); setNewJudge({ ...judge }); setShowJudgeModal(true); }} className="px-2 py-0.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded text-xs touch-button">수정</button><button onClick={() => removeJudge(judge.id)} className="px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded text-xs touch-button">삭제</button></div>))}</div></div>
+                        <div className="p-3 sm:p-4 bg-gray-50 rounded-xl shadow-inner"><div className="flex flex-wrap items-center justify-between gap-2 mb-3"><h3 className="text-lg sm:text-xl font-bold">종목 설정 (경기 순서)</h3><button onClick={() => { setEditingEvent(null); setNewEvent({ name: '', type: 'team', emoji: '🏅', duration: '60', maxPlayers: '10', maxTeams: '5', enabledGrades: [] }); setShowEventModal(true);}} className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg text-sm touch-button">➕ 종목 추가</button></div><div className="max-h-64 overflow-y-auto space-y-2">{config.events.map((event, index) => (<div key={event.id} className="flex items-center gap-2 p-2 bg-white rounded-lg shadow"><div className="flex flex-col gap-0.5"><button onClick={() => moveEvent(index, 'up')} disabled={index === 0} className="control-button-up text-gray-500 hover:text-gray-800 text-xs touch-button"><i className="fas fa-caret-up"></i></button><button onClick={() => moveEvent(index, 'down')} disabled={index === config.events.length - 1} className="control-button-down text-gray-500 hover:text-gray-800 text-xs touch-button"><i className="fas fa-caret-down"></i></button></div><span className="text-lg">{event.emoji}</span><div className="flex-1 min-w-0"><div className="font-bold text-sm truncate">{event.name}</div><div className="text-xs text-gray-600">{event.type === 'team' ? '팀' : event.type === 'pair' ? '2인1조' : '개인'} · {event.duration}초 {event.enabledGrades?.length > 0 && `· ${event.enabledGrades.sort((a, b) => a - b).join(', ')}학년`}</div></div><div className="flex flex-col sm:flex-row gap-0.5"><button onClick={() => handleDuplicateEvent(event.id)} className="px-1.5 py-0.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded text-xs touch-button">복사</button><button onClick={() => { setEditingEvent(event); setNewEvent({ ...event, duration: String(event.duration), maxPlayers: String(event.maxPlayers), maxTeams: String(event.maxTeams) }); setShowEventModal(true); }} className="px-1.5 py-0.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded text-xs touch-button">수정</button><button onClick={() => removeEvent(event.id)} className="px-1.5 py-0.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded text-xs touch-button">삭제</button></div></div>))}</div></div>
+                        <div className="flex justify-center"><button onClick={() => showModal('모든 설정을 초기값으로 되돌리시겠습니까?', () => handleConfigChange(defaultConfig, {}), '초기화')} className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg touch-button">🔄 설정 초기화</button></div>
+                    </div>
+                </div>
+            );
+        });
+
+        function GradeTabContent({ grade, gradeInfo, config, playerData, jumpRecords, judgeAssignments, handlePlayerAssignment, handleRemovePlayerFromEvent, handleRecordChange, handleDirectRecordInput, calculateTeamTotal, activeGradeTab, setActiveGradeTab, clearEventRecords, setShowPasteModal, handleFileUpload, handleCopyPlayerList, clearClassPlayerList, handleRemovePlayerFromRoster, setAssignmentTarget, setShowJudgeAssignmentModal, customSounds, handleAddPlayerToRoster, handleUpdateClassName, updateClassEmoji, setFullscreenResultData, audioContextRef, addClass, deleteClasses, reorderClasses, showModal }) {
+            const currentSubTab = activeGradeTab[`grade${grade}`] || 'guide';
+            const teamLabel = isNaN(parseInt(grade)) ? '팀' : '학년';
+            
+            const handleShowResults = () => {
+                setFullscreenResultData({
+                    grade,
+                    gradeInfo,
+                    config,
+                    jumpRecords,
+                    calculateTeamTotal,
+                    customDrumroll: customSounds.drumroll,
+                    customFanfare: customSounds.fanfare,
+                    audioContextRef
+                });
+            };
+
+            return (
+                <div className="animate-fadeIn">
+                    <h2 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 flex items-center gap-3 mb-4"><span className="text-4xl sm:text-5xl">{gradeInfo.emoji}</span> {grade}{teamLabel}</h2>
+                    <div className="flex justify-around mb-3 border-b-2 border-gray-200">
+                        <button onClick={() => setActiveGradeTab(prev => ({ ...prev, [`grade${grade}`]: 'guide' }))} className={`flex-1 text-center px-4 py-3 font-bold text-xl ${currentSubTab === 'guide' ? 'border-b-4 border-purple-500 text-purple-600' : 'text-gray-500'} touch-button`}>📋 진행안내</button>
+                        <button onClick={() => setActiveGradeTab(prev => ({ ...prev, [`grade${grade}`]: 'players' }))} className={`flex-1 text-center px-4 py-3 font-bold text-xl ${currentSubTab === 'players' ? 'border-b-4 border-purple-500 text-purple-600' : 'text-gray-500'} touch-button`}>👥 팀 명단</button>
+                        <button onClick={() => setActiveGradeTab(prev => ({ ...prev, [`grade${grade}`]: 'records' }))} className={`flex-1 text-center px-4 py-3 font-bold text-xl ${currentSubTab === 'records' ? 'border-b-4 border-purple-500 text-purple-600' : 'text-gray-500'} touch-button`}>✍️ 경기 기록</button>
+                        <button onClick={() => setActiveGradeTab(prev => ({ ...prev, [`grade${grade}`]: 'results' }))} className={`flex-1 text-center px-4 py-3 font-bold text-xl ${currentSubTab === 'results' ? 'border-b-4 border-purple-500 text-purple-600' : 'text-gray-500'} touch-button`}>🏆 경기 결과</button>
+                    </div>
+                    <div className="pt-4">
+                        {currentSubTab === 'guide' && <GradeGuideContent config={config} grade={grade} judgeAssignments={judgeAssignments} />}
+                        {currentSubTab === 'players' && <PlayersContent grade={grade} gradeInfo={gradeInfo} config={config} playerData={playerData} handlePlayerAssignment={handlePlayerAssignment} handleRemovePlayerFromEvent={handleRemovePlayerFromEvent} setShowPasteModal={setShowPasteModal} handleFileUpload={handleFileUpload} handleCopyPlayerList={handleCopyPlayerList} clearClassPlayerList={clearClassPlayerList} handleRemovePlayerFromRoster={handleRemovePlayerFromRoster} handleAddPlayerToRoster={handleAddPlayerToRoster} handleUpdateClassName={handleUpdateClassName} updateClassEmoji={updateClassEmoji} addClass={addClass} deleteClasses={deleteClasses} reorderClasses={reorderClasses} showModal={showModal} />}
+                        {currentSubTab === 'records' && <RecordsContent grade={grade} gradeInfo={gradeInfo} config={config} jumpRecords={jumpRecords} playerData={playerData} judgeAssignments={judgeAssignments} handleRecordChange={handleRecordChange} handleDirectRecordInput={handleDirectRecordInput} calculateTeamTotal={calculateTeamTotal} clearEventRecords={clearEventRecords} setAssignmentTarget={setAssignmentTarget} setShowJudgeAssignmentModal={setShowJudgeAssignmentModal} />}
+                        {currentSubTab === 'results' && (
+                            <div className="flex items-center justify-center min-h-[50vh]">
+                                <button onClick={handleShowResults} className="relative z-10 px-10 py-6 text-5xl font-black text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                                    🏆 경기 결과 발표 🏆
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const GradeGuideContent = memo(({ config, grade, judgeAssignments }) => {
+            const gradeNum = parseInt(grade);
+            const gradeEvents = config.events.filter(event => (event.enabledGrades || []).includes(gradeNum) || (event.enabledGrades || []).includes(grade));
+            const teamLabel = isNaN(gradeNum) ? '팀' : '학년';
+            const gradeInfo = config.grades[grade];
+
+            const allAssignedJudges = useMemo(() => {
+                const judgeIds = new Set();
+                if (judgeAssignments && typeof judgeAssignments === 'object') {
+                    Object.keys(judgeAssignments).forEach(key => {
+                        const [g] = key.split('-');
+                        if (g === grade) {
+                            const ids = judgeAssignments[key];
+                            if (Array.isArray(ids)) {
+                                ids.forEach(id => judgeIds.add(id));
+                            }
+                        }
+                    });
+                }
+                return Array.from(judgeIds).map(id => config.judges.find(j => j.id === id)).filter(Boolean);
+            }, [grade, judgeAssignments, config.judges]);
+
+            const GuideItem = ({ emoji, title, description, index, judges, judgesByClass }) => (
+                <div className="flex items-start gap-4 p-4 sm:p-6 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl hover:shadow-lg">
+                    <span className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full flex items-center justify-center font-bold text-2xl">{index}</span>
+                    <div className="flex-1">
+                        <p className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2"><span className="text-3xl sm:text-4xl">{emoji}</span>{title}</p>
+                        {description && <p className="text-xl sm:text-2xl text-gray-600 mt-1">{description}</p>}
+                        {judges && judges.length > 0 &&
+                             <div className="mt-2">
+                                <h5 className="text-lg font-bold text-gray-500">배정 심판</h5>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {judges.map(j => <span key={j.id} className="text-lg bg-gray-200 text-gray-800 px-3 py-1 rounded-full">{j.emoji} {j.name}</span>)}
+                                </div>
+                            </div>
+                        }
+                        {judgesByClass && Object.keys(judgesByClass).length > 0 &&
+                            <div className="mt-2">
+                                <h5 className="text-lg font-bold text-gray-500">배정 심판</h5>
+                                <div className="flex flex-col gap-1 mt-1">
+                                    {Object.entries(judgesByClass).map(([classNum, judges]) => (
+                                        <div key={classNum} className="text-lg">
+                                            <span className="font-bold">{gradeInfo.classNames?.[classNum] || `${classNum}반`}: </span>
+                                            <span>{judges.map(j => `${j.emoji} ${j.name}`).join(', ')}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            );
+
+            return (<div className="animate-fadeIn px-2 sm:px-4"><h2 className="text-4xl sm:text-5xl font-black mb-6 sm:mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 flex items-center gap-4"><span className="text-5xl sm:text-6xl">📋</span> {grade}{teamLabel} 진행 순서</h2><div className="space-y-4"><GuideItem emoji="🤸" title="준비운동" description="다 함께 스트레칭!" index={1} /><GuideItem emoji="👨‍⚖️" title="심판 소개" description="공정한 심사를 해주실 분들입니다." index={2} judges={allAssignedJudges} />{(() => { if (gradeEvents.length === 0) return <div className="text-center text-gray-500 py-8">설정 탭에서 이 {teamLabel}의 종목을 추가해주세요.</div>; let currentIndex = 3; const eventItems = gradeEvents.map((event) => {
+                const judgesByClass = {};
+                Object.keys(judgeAssignments).forEach(key => {
+                    const [g, c, eId] = key.split('-');
+                    if (g === grade && eId === event.id) {
+                        if (!judgesByClass[c]) judgesByClass[c] = [];
+                        const assignedJudgeIds = judgeAssignments[key];
+                        assignedJudgeIds.forEach(jId => {
+                            const judge = config.judges.find(j => j.id === jId);
+                            if (judge) judgesByClass[c].push(judge);
+                        });
+                    }
+                });
+                return (<GuideItem key={event.id} emoji={event.emoji} title={event.name} description={`${event.type === 'team' ? '팀 전체' : event.type === 'pair' ? '2인 1조' : '개인전'} · ${event.duration}초`} judgesByClass={judgesByClass} index={currentIndex++} />);
+            }); return [...eventItems, <GuideItem key="final" emoji="🏆" title="시상 및 정리운동" description="모두 수고하셨습니다!" index={currentIndex} />]; })()}</div></div>);
+        });
+
+        const DraggablePlayer = memo(({ playerInfo, onDragStart, isSelected, onToggleSelect, isSelectionMode }) => (
+            <div
+                draggable={!isSelectionMode}
+                onDragStart={(e) => !isSelectionMode && onDragStart(e, playerInfo)}
+                className={`player-card bg-white p-2 rounded-lg shadow-sm flex items-center justify-between hover:shadow-md ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}
+                onClick={() => isSelectionMode && onToggleSelect()}
+            >
+                <div className="flex items-center gap-2 flex-1">
+                    {isSelectionMode && (
+                        <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={onToggleSelect}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 text-purple-600"
+                        />
+                    )}
+                    <span className="text-sm font-bold text-gray-800 truncate">{playerInfo.playerName}</span>
+                </div>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        playerInfo.onDelete();
+                    }}
+                    className="ml-2 text-red-500 hover:text-red-700 font-bold text-sm px-1"
+                >×</button>
+            </div>
+        ));
+
+        const AssignedPlayer = memo(({ player, eventType, onRemove }) => (
+            <div className="bg-purple-100 text-purple-800 text-lg font-bold px-3 py-1 rounded-full flex items-center gap-2">
+                <span>{eventType === 'pair' ? `${player.player1 || '?'} & ${player.player2 || '?'}` : player}</span>
+                <button onClick={onRemove} className="text-purple-500 hover:text-purple-700 font-bold">×</button>
+            </div>
+        ));
+
+        const DroppableEventArea = memo(({ event, grade, classNum, playerData, onDrop, onRemovePlayer, selectedCount, onBatchAssign }) => {
+            const [isDragOver, setIsDragOver] = useState(false);
+            const playerListId = event.playerListId || event.id;
+            const assignedPlayers = playerData?.[grade]?.[`class${classNum}`]?.[playerListId] || [];
+
+            const handleDragOver = (e) => { e.preventDefault(); setIsDragOver(true); };
+            const handleDragLeave = (e) => { e.preventDefault(); setIsDragOver(false); };
+            const handleDrop = (e) => { e.preventDefault(); setIsDragOver(false); onDrop(e, { eventId: event.id }); };
+
+            return (
+                <div>
+                    {selectedCount > 0 && (
+                        <button
+                            onClick={() => onBatchAssign(event.id)}
+                            className="w-full mb-2 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg text-sm transition-colors"
+                        >
+                            선택한 {selectedCount}명 배정하기
+                        </button>
+                    )}
+                    <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`droppable-area p-3 rounded-lg ${isDragOver ? 'drag-over' : ''}`}
+                    >
+                        {assignedPlayers.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {assignedPlayers.map((player, idx) => (
+                                    <AssignedPlayer
+                                        key={idx}
+                                        player={player}
+                                        eventType={event.type}
+                                        onRemove={() => onRemovePlayer(grade, classNum, event.id, player)}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center text-gray-400 text-lg">
+                                {selectedCount > 0 ? '위 버튼을 클릭하여 배정' : '이곳으로 선수를 드래그하세요'}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        });
+
+        const AddPlayerInput = memo(({ grade, classNum, handleAddPlayerToRoster }) => {
+            const [name, setName] = useState('');
+
+            const handleAdd = () => {
+                if (handleAddPlayerToRoster(grade, classNum, name)) {
+                    setName('');
+                }
+            };
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    handleAdd();
+                }
+            };
+
+            return (
+                <div className="flex gap-2 mt-2">
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="개별 선수 이름"
+                        className="flex-grow px-2 py-1 border-2 border-gray-300 rounded-md text-sm focus:border-purple-500 focus:ring-purple-500"
+                    />
+                    <button
+                        onClick={handleAdd}
+                        className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-md text-sm touch-button"
+                    >
+                        추가
+                    </button>
+                </div>
+            );
+        });
+
+        const EmojiPicker = memo(({ currentEmoji, onSelect }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const cuteEmojis = ['😀', '😍', '🥳', '🚀', '🌟', '❤️', '🍀', '🍎', '🍓', '🍉', '🔥', '💧', '⚡️', '🌈', '⚽️', '🏀', '🎹', '🎸', '🎨', '💡', '👑', '💎', '🎉', '💯', '🐶', '🐱', '🐰', '🦊', '🐻', '🐼', '🐯', '🦁', '🐷', '🐸', '🐵', '🐔'];
+            const pickerRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+                        setIsOpen(false);
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            return (
+                <div className="relative" ref={pickerRef}>
+                    <button onClick={() => setIsOpen(!isOpen)} className="text-2xl p-1 rounded-md hover:bg-gray-200 transition-colors">
+                        {currentEmoji}
+                    </button>
+                    {isOpen && (
+                        <div className="absolute top-full mt-2 left-0 bg-white border rounded-lg shadow-lg p-2 grid grid-cols-6 gap-1 z-10">
+                            {cuteEmojis.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    onClick={() => {
+                                        onSelect(emoji);
+                                        setIsOpen(false);
+                                    }}
+                                    className="text-2xl p-1 rounded-md hover:bg-gray-100"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        });
+
+        function PlayersContent({ grade, gradeInfo, config, playerData, handlePlayerAssignment, handleRemovePlayerFromEvent, setShowPasteModal, handleFileUpload, handleCopyPlayerList, clearClassPlayerList, handleRemovePlayerFromRoster, handleAddPlayerToRoster, handleUpdateClassName, updateClassEmoji, addClass, deleteClasses, reorderClasses, showModal }) {
+            const gradeNum = parseInt(grade);
+            const gradeEvents = config.events.filter(event => (event.enabledGrades || []).includes(gradeNum) || (event.enabledGrades || []).includes(grade));
+            const uniquePlayerListEvents = gradeEvents.filter((event, index, self) => index === self.findIndex(e => (e.playerListId || e.id) === (event.playerListId || event.id)));
+            const teamLabel = isNaN(gradeNum) ? '팀' : '학년';
+
+            const [selectedPlayers, setSelectedPlayers] = useState({});
+            const [isSelectionMode, setIsSelectionMode] = useState(false);
+            const [isRosterSectionCollapsed, setIsRosterSectionCollapsed] = useState(false);
+            const [collapsedEventRosters, setCollapsedEventRosters] = useState({});
+            const [editingClassId, setEditingClassId] = useState(null);
+            
+            const [isClassDeleteMode, setIsClassDeleteMode] = useState(false);
+            const [classesToDelete, setClassesToDelete] = useState(new Set());
+
+            const handleClassNameSubmit = (grade, classNum, newName) => {
+                handleUpdateClassName(grade, classNum, newName);
+                setEditingClassId(null);
+            };
+
+            const toggleEventRosterCollapse = (eventId) => {
+                setCollapsedEventRosters(prev => ({...prev, [eventId]: !prev[eventId]}));
+            };
+
+            const handleDragStart = useCallback((e, playerInfo) => {
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', JSON.stringify(playerInfo));
+            }, []);
+
+            const handleDrop = useCallback((e, targetEvent) => {
+                const playerInfo = JSON.parse(e.dataTransfer.getData('text/plain'));
+                handlePlayerAssignment(playerInfo, targetEvent);
+            }, [handlePlayerAssignment]);
+
+            const togglePlayerSelection = useCallback((grade, classNum, playerName) => {
+                const key = `${grade}-${classNum}-${playerName}`;
+                setSelectedPlayers(prev => {
+                    const newSelection = {...prev};
+                    if (newSelection[key]) {
+                        delete newSelection[key];
+                    } else {
+                        newSelection[key] = { grade, classNum, playerName };
+                    }
+                    return newSelection;
+                });
+            }, []);
+
+            const handleBatchAssignment = useCallback((eventId) => {
+                const selected = Object.values(selectedPlayers).filter(Boolean);
+                if (selected.length === 0) return;
+
+                selected.forEach(playerInfo => {
+                    handlePlayerAssignment(playerInfo, { eventId });
+                });
+            }, [selectedPlayers, handlePlayerAssignment]);
+
+            const toggleAllPlayers = useCallback((grade, classNum, allPlayers) => {
+                let newSelection = {...selectedPlayers};
+                const allClassKeys = allPlayers.map(name => `${grade}-${classNum}-${name}`);
+                const allSelected = allClassKeys.every(key => newSelection[key]);
+
+                if (allSelected) {
+                    allClassKeys.forEach(key => delete newSelection[key]);
+                } else {
+                    allPlayers.forEach(name => {
+                        const key = `${grade}-${classNum}-${name}`;
+                        newSelection[key] = { grade, classNum, playerName: name };
+                    });
+                }
+
+                setSelectedPlayers(newSelection);
+            }, [selectedPlayers]);
+
+            const getTotalSelectedCount = () => {
+                return Object.values(selectedPlayers).filter(Boolean).length;
+            };
+            
+            const toggleClassDeleteMode = () => {
+                setIsClassDeleteMode(prev => !prev);
+                setClassesToDelete(new Set());
+            };
+
+            const handleClassCheckboxChange = (classNum) => {
+                setClassesToDelete(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(classNum)) newSet.delete(classNum);
+                    else newSet.add(classNum);
+                    return newSet;
+                });
+            };
+
+            const executeDeleteClasses = () => {
+                if (classesToDelete.size === 0) return;
+                showModal(
+                    `선택한 ${classesToDelete.size}개 반과 모든 소속 선수, 경기 기록이 영구적으로 삭제됩니다. 계속하시겠습니까?`,
+                    () => {
+                        deleteClasses(grade, Array.from(classesToDelete));
+                        toggleClassDeleteMode();
+                    },
+                    '삭제'
+                );
+            };
+            
+            const moveClass = (classIndex, direction) => {
+                const newIndex = classIndex + direction;
+                if (newIndex < 0 || newIndex >= gradeInfo.classOrder.length) return;
+                reorderClasses(grade, classIndex, newIndex);
+            };
+
+            return (
+                <div className="space-y-6 relative">
+                    {getTotalSelectedCount() > 0 && (
+                        <div className="fixed bottom-20 right-4 bg-white rounded-xl shadow-2xl p-4 z-30 max-w-xs animate-fadeIn">
+                            <h4 className="font-bold text-purple-700 mb-2">
+                                선택된 선수 ({getTotalSelectedCount()}명)
+                            </h4>
+                            <div className="max-h-40 overflow-y-auto mb-3 space-y-1">
+                                {Object.values(selectedPlayers).filter(Boolean).map((p, idx) => (
+                                    <div key={idx} className="text-sm text-gray-800 bg-gray-100 p-1 rounded">
+                                        {p.playerName} ({p.grade}{isNaN(parseInt(p.grade)) ? '' : '학년'} {p.classNum}반)
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setSelectedPlayers({});
+                                    setIsSelectionMode(false);
+                                }}
+                                className="w-full px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg text-sm"
+                            >
+                                선택 취소
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-2xl font-bold text-purple-800">📋 {grade}{teamLabel} 반별 명단</h3>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => addClass(grade)} className="px-3 py-1 font-bold rounded-lg text-sm text-white bg-blue-500 hover:bg-blue-600">➕ 반 추가</button>
+                                <button onClick={toggleClassDeleteMode} className={`px-3 py-1 font-bold rounded-lg text-sm text-white ${isClassDeleteMode ? 'bg-red-600' : 'bg-red-400'}`}>
+                                    {isClassDeleteMode ? '삭제 취소' : '🗑️ 반 삭제'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newMode = !isSelectionMode;
+                                        setIsSelectionMode(newMode);
+                                        if (!newMode) {
+                                            setSelectedPlayers({});
+                                        }
+                                    }}
+                                    className={`px-3 py-1 font-bold rounded-lg text-sm transition-colors ${
+                                        isSelectionMode
+                                            ? 'bg-purple-500 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    {isSelectionMode ? '✓ 선택모드' : '☐ 선택모드'}
+                                </button>
+                            </div>
+                        </div>
+                         {isClassDeleteMode && (
+                            <div className="p-2 bg-red-100 border border-red-300 rounded-lg flex justify-end items-center gap-2">
+                                <span className="text-red-700 font-bold">{classesToDelete.size}개 반 선택됨</span>
+                                <button onClick={executeDeleteClasses} disabled={classesToDelete.size === 0} className="px-4 py-2 bg-red-500 text-white font-bold rounded-lg disabled:opacity-50">선택 항목 영구 삭제</button>
+                            </div>
+                        )}
+                        <div className={`transition-all duration-500 ease-in-out`}>
+                            <FlexibleGrid
+                                items={gradeInfo.classOrder.map((classNum, index) => ({ classNum, index, key: classNum }))}
+                                columns={window.innerWidth < 768 ? 1 : (window.innerWidth < 1024 ? 2 : 3)}
+                                renderItem={({ classNum, index }) => {
+                                    const allClassPlayers = playerData?.[grade]?.[`class${classNum}`]?.allPlayers || [];
+                                    const isAllSelected = allClassPlayers.length > 0 && allClassPlayers.every(name => selectedPlayers[`${grade}-${classNum}-${name}`]);
+                                    const isEditing = editingClassId === classNum;
+
+                                    return (
+                                        <div className="bg-white p-4 rounded-xl shadow-lg h-full w-full flex flex-col group">
+                                            <div className="flex items-center justify-between mb-3 flex-wrap gap-y-1">
+                                                <div className="text-xl font-bold text-blue-600 flex items-center gap-1">
+                                                    {isClassDeleteMode && <input type="checkbox" className="h-5 w-5" checked={classesToDelete.has(classNum)} onChange={() => handleClassCheckboxChange(classNum)} />}
+                                                    <EmojiPicker currentEmoji={gradeInfo.classEmojis?.[classNum] || '🐾'} onSelect={(emoji) => updateClassEmoji(grade, classNum, emoji)} />
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="text"
+                                                            defaultValue={gradeInfo.classNames?.[classNum] || `${classNum}반`}
+                                                            onBlur={(e) => handleClassNameSubmit(grade, classNum, e.target.value)}
+                                                            onKeyDown={(e) => { if (e.key === 'Enter') handleClassNameSubmit(grade, classNum, e.target.value) }}
+                                                            className="w-24 border-b-2 border-blue-500"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <>
+                                                            <span>{gradeInfo.classNames?.[classNum] || `${grade}${teamLabel} ${classNum}반`}</span>
+                                                            <button onClick={() => setEditingClassId(classNum)} className="text-gray-400 hover:text-blue-600 text-base">✏️</button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => moveClass(index, -1)} disabled={index === 0} className="text-gray-400 hover:text-black disabled:opacity-20">⬅️</button>
+                                                        <button onClick={() => moveClass(index, 1)} disabled={index === gradeInfo.classOrder.length - 1} className="text-gray-400 hover:text-black disabled:opacity-20">➡️</button>
+                                                    </div>
+                                                    {isSelectionMode && allClassPlayers.length > 0 && (
+                                                        <label className="flex items-center gap-1.5 text-sm font-bold text-gray-600 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isAllSelected}
+                                                                onChange={() => toggleAllPlayers(grade, classNum, allClassPlayers)}
+                                                                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                            />
+                                                            전체
+                                                        </label>
+                                                    )}
+                                                    <span className="text-sm text-gray-500 font-medium">
+                                                        {allClassPlayers.length}명
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex gap-2 mb-3">
+                                                <button onClick={() => setShowPasteModal({ grade, classNum, isClassList: true })} className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg text-sm touch-button">
+                                                    명단 입력
+                                                </button>
+                                                <button onClick={() => clearClassPlayerList(grade, classNum)} className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg text-sm touch-button">
+                                                    초기화
+                                                </button>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto flex-grow">
+                                                {allClassPlayers.length > 0 ? (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {allClassPlayers.map((name, idx) => {
+                                                            const key = `${grade}-${classNum}-${name}`;
+                                                            return (
+                                                                <DraggablePlayer
+                                                                    key={idx}
+                                                                    playerInfo={{
+                                                                        grade,
+                                                                        classNum,
+                                                                        playerName: name,
+                                                                        onDelete: () => handleRemovePlayerFromRoster(grade, classNum, name)
+                                                                    }}
+                                                                    onDragStart={handleDragStart}
+                                                                    isSelected={!!selectedPlayers[key]}
+                                                                    onToggleSelect={() => togglePlayerSelection(grade, classNum, name)}
+                                                                    isSelectionMode={isSelectionMode}
+                                                                />
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-gray-400 text-center py-8">
+                                                        명단을 입력해주세요
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <AddPlayerInput grade={grade} classNum={classNum} handleAddPlayerToRoster={handleAddPlayerToRoster} />
+                                        </div>
+                                    );
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-2xl font-bold text-purple-800">🏃 종목별 명단</h3>
+                             <button onClick={() => setCollapsedEventRosters(prev => {
+                                 const allCollapsed = uniquePlayerListEvents.every(e => prev[e.id]);
+                                 const newState = {};
+                                 uniquePlayerListEvents.forEach(e => {
+                                     newState[e.id] = !allCollapsed;
+                                 });
+                                 return newState;
+                             })} className="px-3 py-1 bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold rounded-lg text-sm">
+                                {uniquePlayerListEvents.every(e => collapsedEventRosters[e.id]) ? '모두 펼치기' : '모두 접기'}
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            {uniquePlayerListEvents.map(event => {
+                                const linkedEvents = gradeEvents.filter(e => (e.playerListId || e.id) === (event.playerListId || event.id));
+                                const eventName = linkedEvents.map(e => e.name).join(' / ');
+                                const isEventCollapsed = collapsedEventRosters[event.id];
+
+                                return (
+                                    <div key={event.playerListId || event.id} className="bg-white p-4 rounded-xl shadow">
+                                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                                            <h4 className="text-xl font-bold text-purple-700 flex items-center gap-2">
+                                                <span className="text-2xl">{event.emoji}</span> {eventName}
+                                            </h4>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => toggleEventRosterCollapse(event.id)} className="px-3 py-1 bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold rounded-lg text-sm">
+                                                    {isEventCollapsed ? '펼치기' : '접기'}
+                                                </button>
+                                                <button onClick={() => handleCopyPlayerList(grade, 1, event.id)} className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white font-bold text-sm rounded touch-button">복사</button>
+                                                <button onClick={() => setShowPasteModal({ grade, classNum: 1, eventId: event.id, eventName })} className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white font-bold text-sm rounded touch-button">붙여넣기</button>
+                                                <label className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded cursor-pointer touch-button">
+                                                    파일
+                                                    <input type="file" accept=".txt,.csv" onChange={(e) => handleFileUpload(e, grade, 1, event.id)} className="hidden" />
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className={`transition-all duration-500 ease-in-out ${isEventCollapsed ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-full opacity-100'}`}>
+                                            <FlexibleGrid
+                                                items={gradeInfo.classOrder.map((classNum) => ({ classNum, key: classNum }))}
+                                                columns={window.innerWidth < 768 ? 1 : (window.innerWidth < 1024 ? 2 : 3)}
+                                                renderItem={({ classNum }) => (
+                                                    <div>
+                                                        <h5 className="text-sm font-bold text-gray-600 mb-2">{gradeInfo.classEmojis?.[classNum] || '🐾'} {gradeInfo.classNames?.[classNum] || `${classNum}반`}</h5>
+                                                        <DroppableEventArea
+                                                            event={event}
+                                                            grade={grade}
+                                                            classNum={classNum}
+                                                            playerData={playerData}
+                                                            onDrop={handleDrop}
+                                                            onRemovePlayer={handleRemovePlayerFromEvent}
+                                                            selectedCount={getTotalSelectedCount()}
+                                                            onBatchAssign={handleBatchAssignment}
+                                                        />
+                                                    </div>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const RecordsContent = memo(({ grade, gradeInfo, config, jumpRecords, playerData, judgeAssignments, handleRecordChange, handleDirectRecordInput, calculateTeamTotal, clearEventRecords, setAssignmentTarget, setShowJudgeAssignmentModal }) => {
+            const [collapsedEvents, setCollapsedEvents] = useState({});
+            const [isScoreboardCollapsed, setIsScoreboardCollapsed] = useState(false);
+
+            useEffect(() => {
+                const initialCollapseState = {};
+                config.events.forEach(event => {
+                    for (let i = 1; i <= gradeInfo.classes; i++) {
+                        initialCollapseState[`${i}-${event.id}`] = true;
+                    }
+                });
+                setCollapsedEvents(initialCollapseState);
+            }, [grade, gradeInfo.classes, config.events]);
+
+            const toggleEventCollapse = (eventId) => {
+                setCollapsedEvents(prev => ({...prev, [eventId]: !prev[eventId]}));
+            };
+
+            const gradeNum = parseInt(grade);
+            const gradeEvents = config.events.map((event, index) => ({...event, originalIndex: index})).filter(event => (event.enabledGrades || []).includes(gradeNum) || (event.enabledGrades || []).includes(grade));
+            const teamLabel = isNaN(gradeNum) ? '팀' : '학년';
+
+            const getScoreColor = (score) => {
+                if (score <= 0) return 'text-gray-500';
+                if (score <= 20) return 'text-blue-600';
+                if (score <= 50) return 'text-green-600';
+                if (score <= 100) return 'text-yellow-600';
+                if (score <= 200) return 'text-orange-600';
+                return 'text-red-600';
+            };
+
+            const RecordInputRow = ({ grade, classNum, eventId, playerName, count, displayName }) => (<div className="flex items-center justify-between p-1 bg-pink-50 rounded"><span className="text-lg font-bold text-gray-700 flex-1 truncate pr-2">{displayName}</span><div className="flex items-center gap-1"><button onClick={() => handleRecordChange(grade, classNum, eventId, playerName, -100)} className="w-10 h-7 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold text-sm rounded touch-button">-100</button><button onClick={() => handleRecordChange(grade, classNum, eventId, playerName, -10)} className="w-10 h-7 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold text-sm rounded touch-button">-10</button><button onClick={() => handleRecordChange(grade, classNum, eventId, playerName, -1)} className="w-7 h-7 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold text-lg rounded touch-button">-</button><input type="text" inputMode="numeric" value={count} onChange={(e) => handleDirectRecordInput(grade, classNum, eventId, playerName, e.target.value)} className={`w-16 sm:w-20 text-center text-2xl font-black border-2 border-pink-300 rounded px-1 ${getScoreColor(count)}`} /><button onClick={() => handleRecordChange(grade, classNum, eventId, playerName, 1)} className="w-7 h-7 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold text-lg rounded touch-button">+</button><button onClick={() => handleRecordChange(grade, classNum, eventId, playerName, 10)} className="w-10 h-7 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold text-sm rounded touch-button">+10</button><button onClick={() => handleRecordChange(grade, classNum, eventId, playerName, 100)} className="w-10 h-7 bg-pink-200 hover:bg-pink-300 text-pink-800 font-bold text-sm rounded touch-button">+100</button></div></div>);
+            const TeamRecordInput = ({ grade, classNum, eventId }) => {
+                const count = jumpRecords?.[grade]?.[`class${classNum}`]?.[eventId] || 0;
+                return (<div className="flex items-center justify-center gap-1"><button onClick={() => handleRecordChange(grade, classNum, eventId, null, -100)} className="px-2 py-1 bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold text-base rounded touch-button">-100</button><button onClick={() => handleRecordChange(grade, classNum, eventId, null, -10)} className="px-2 py-1 bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold text-base rounded touch-button">-10</button><button onClick={() => handleRecordChange(grade, classNum, eventId, null, -1)} className="px-2 py-1 bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold text-lg rounded touch-button">-</button><input type="text" inputMode="numeric" value={count} onChange={(e) => handleDirectRecordInput(grade, classNum, eventId, null, e.target.value)} className={`w-20 sm:w-24 text-center text-3xl font-black border-2 border-purple-300 rounded px-1 ${getScoreColor(count)}`} /><button onClick={() => handleRecordChange(grade, classNum, eventId, null, 1)} className="px-2 py-1 bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold text-lg rounded touch-button">+</button><button onClick={() => handleRecordChange(grade, classNum, eventId, null, 10)} className="px-2 py-1 bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold text-base rounded touch-button">+10</button><button onClick={() => handleRecordChange(grade, classNum, eventId, null, 100)} className="px-2 py-1 bg-purple-200 hover:bg-purple-300 text-purple-800 font-bold text-base rounded touch-button">+100</button></div>);
+            }
+
+            const handleOpenAssignmentModal = (grade, classNum, event) => {
+                const key = `${grade}-${classNum}-${event.id}`;
+                setAssignmentTarget({ key, grade, classNum, eventName: event.name });
+                setShowJudgeAssignmentModal(true);
+            };
+
+            const handleExportGradeSummary = () => {
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+                const headers = ['반', '총점', ...gradeEvents.map(e => e.name)];
+                csvContent += headers.join(',') + '\r\n';
+
+                for(let i=1; i<= gradeInfo.classes; i++) {
+                    const classNum = i;
+                    const className = gradeInfo.classNames?.[classNum] || `${classNum}반`;
+                    const totalScore = calculateTeamTotal(grade, classNum);
+                    const row = [className, totalScore];
+                    gradeEvents.forEach(event => {
+                        const record = jumpRecords[grade]?.[`class${classNum}`]?.[event.id];
+                        let eventScore = 0;
+                        if (typeof record === 'number') {
+                            eventScore = record;
+                        } else if (typeof record === 'object') {
+                            eventScore = Object.values(record).reduce((sum, val) => sum + (Number(val) || 0), 0);
+                        }
+                        row.push(eventScore);
+                    });
+                    csvContent += row.join(',') + '\r\n';
+                }
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `${config.title}_${grade}${teamLabel}_종합결과.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleExportDetailedRecords = () => {
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+                const headers = ['반', '종목', '선수/팀', '점수'];
+                csvContent += headers.join(',') + '\r\n';
+
+                for (let i = 1; i <= gradeInfo.classes; i++) {
+                    const classNum = i;
+                    const className = gradeInfo.classNames?.[classNum] || `${classNum}반`;
+                    gradeEvents.forEach(event => {
+                        const records = jumpRecords[grade]?.[`class${classNum}`]?.[event.id];
+                        if (event.type === 'team') {
+                            csvContent += `${className},${event.name},팀 전체,${records || 0}\r\n`;
+                        } else if (records) {
+                            Object.entries(records).forEach(([player, score]) => {
+                                const playerName = player.replace(/_/g, ' & ');
+                                csvContent += `${className},"${event.name}","${playerName}",${score || 0}\r\n`;
+                            });
+                        }
+                    });
+                }
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `${config.title}_${grade}${teamLabel}_상세기록.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            return (
+                <div>
+                    <div className="mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                             <h3 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🏆 {grade}{teamLabel} 전체 현황</h3>
+                             <div className="flex gap-2">
+                                <button onClick={handleExportGradeSummary} className="px-3 py-1 bg-green-500 text-white font-bold rounded-lg text-sm hover:bg-green-600">엑셀(종합)</button>
+                                <button onClick={() => setIsScoreboardCollapsed(!isScoreboardCollapsed)} className="px-3 py-1 bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold rounded-lg text-sm">
+                                    {isScoreboardCollapsed ? '펼치기' : '접기'}
+                                </button>
+                             </div>
+                        </div>
+                        <div className={`transition-all duration-500 ease-in-out ${isScoreboardCollapsed ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-full opacity-100'}`}>
+                            <div className="rainbow-bg rounded-xl p-4 sm:p-6 shadow-2xl">
+                                <FlexibleGrid
+                                    items={gradeInfo.classOrder.map(cn => ({ classNum: cn, key: cn }))}
+                                    columns={window.innerWidth < 768 ? 1 : (window.innerWidth < 1024 ? 2 : 3)}
+                                    renderItem={({ classNum }) => (
+                                        <div className="scoreboard-card text-center p-4 rounded-xl">
+                                            <h4 className="text-2xl font-bold text-white mb-2 drop-shadow">{gradeInfo.classEmojis?.[classNum] || '🐾'} {gradeInfo.classNames?.[classNum] || `${classNum}반`}</h4>
+                                            <div className="text-6xl sm:text-7xl font-black text-yellow-300 score-update drop-shadow-lg">{calculateTeamTotal(grade, classNum)}</div>
+                                            <div className="text-lg text-white/90 mt-1">총 개수</div>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-2xl sm:text-3xl font-bold text-purple-800">✍️ 반별 기록</h3>
+                        <button onClick={handleExportDetailedRecords} className="px-3 py-1 bg-green-500 text-white font-bold rounded-lg text-sm hover:bg-green-600">엑셀(상세)</button>
+                    </div>
+                     <FlexibleGrid
+                        items={gradeInfo.classOrder.map(cn => ({ classNum: cn, key: cn }))}
+                        columns={window.innerWidth < 768 ? 1 : (window.innerWidth < 1024 ? 2 : 3)}
+                        renderItem={({ classNum }) => (
+                            <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg h-full">
+                                <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 rounded-lg mb-3">{gradeInfo.classEmojis?.[classNum] || '🐾'} {gradeInfo.classNames?.[classNum] || `${grade}${teamLabel} ${classNum}반`}</h3>
+                                <div className="space-y-3">
+                                    {gradeEvents.map((event) => {
+                                        const playerListId = event.playerListId || event.id;
+                                        const selectedPlayers = playerData?.[grade]?.[`class${classNum}`]?.[playerListId] || [];
+                                        const assignmentKey = `${grade}-${classNum}-${event.id}`;
+                                        const assignedJudgeIds = judgeAssignments[assignmentKey] || [];
+                                        const assignedJudges = assignedJudgeIds.map(id => config.judges.find(j => j.id === id)).filter(Boolean);
+                                        const isEventCollapsed = collapsedEvents[`${classNum}-${event.id}`];
+                                        return (
+                                            <div key={event.id} className="border-b pb-2 last:border-b-0">
+                                                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                                    <h4 className="flex-1 text-xl font-bold text-purple-800">{event.emoji} {event.name}</h4>
+                                                    <div className="flex gap-1 flex-wrap">
+                                                        <button onClick={() => toggleEventCollapse(`${classNum}-${event.id}`)} className="px-2 py-1 bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold text-xs rounded touch-button">{isEventCollapsed ? '펼치기' : '접기'}</button>
+                                                        <button onClick={() => handleOpenAssignmentModal(grade, classNum, event)} className="px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs rounded touch-button">심판</button>
+                                                        <button onClick={() => clearEventRecords(event.id, grade, classNum)} className="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xs rounded touch-button">초기화</button>
+                                                    </div>
+                                                </div>
+                                                <div className={`transition-all duration-300 ease-in-out ${isEventCollapsed ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-full opacity-100'}`}>
+                                                    {assignedJudges.length > 0 && (<div className="mb-2 text-base font-semibold text-gray-600"><span className="font-bold">심판: </span>{assignedJudges.map(j => `${j.emoji} ${j.name}`).join(', ')}</div>)}
+                                                    {event.type === 'team' ? (
+                                                        <div className="p-2 bg-purple-50 rounded-lg">
+                                                            <div className="text-base font-semibold text-gray-600 mb-2 px-1 break-words"><span className="font-bold">참가 선수: </span>{selectedPlayers.join(', ') || '명단이 비어있습니다.'}</div>
+                                                            <TeamRecordInput grade={grade} classNum={classNum} eventId={event.id} />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1">
+                                                            {selectedPlayers.map((player, idx) => {
+                                                                const playerName = event.type === 'pair' ? `${player.player1}_${player.player2}` : player;
+                                                                const displayName = event.type === 'pair' ? `${idx + 1}팀: ${player.player1} & ${player.player2}` : player;
+                                                                const eventRecords = jumpRecords?.[grade]?.[`class${classNum}`]?.[event.id];
+                                                                const count = event.type === 'pair' ? (eventRecords?.[`${player.player1}_${player.player2}`] || 0) : (eventRecords?.[player] || 0);
+                                                                return <RecordInputRow key={idx} grade={grade} classNum={classNum} eventId={event.id} playerName={playerName} displayName={displayName} count={count} />;
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    />
+                </div>
+            );
+        });
+
+        const JudgeAssignmentModal = memo(({ targetInfo, allJudges, classPlayers, assignedJudgeIds, onSave, onClose }) => {
+            const [selectedIds, setSelectedIds] = useState(assignedJudgeIds);
+
+            const handleCheckboxChange = (judgeId) => {
+                setSelectedIds(prev =>
+                    prev.includes(judgeId)
+                        ? prev.filter(id => id !== judgeId)
+                        : [...prev, judgeId]
+                );
+            };
+
+            const handleSave = () => {
+                onSave(targetInfo.key, selectedIds);
+                onClose();
+            };
+
+            const teamLabel = isNaN(parseInt(targetInfo.grade)) ? '팀' : '학년';
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 animate-fadeIn max-h-[90vh] flex flex-col">
+                        <h3 className="text-2xl font-bold mb-1">{targetInfo.eventName}</h3>
+                        <p className="text-gray-600 mb-4 text-xl">{targetInfo.grade}{teamLabel} {targetInfo.classNum}반 심판 배정</p>
+
+                        <div className="flex-grow overflow-y-auto space-y-2 pr-2">
+                            {allJudges.map(judge => {
+                                const isInClass = classPlayers.includes(judge.name);
+                                return (
+                                    <div key={judge.id} className={`flex items-center p-2 rounded-lg ${isInClass ? 'bg-gray-200' : 'hover:bg-gray-50'}`}>
+                                        <label className={`flex items-center gap-3 w-full ${isInClass ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(judge.id)}
+                                                onChange={() => handleCheckboxChange(judge.id)}
+                                                disabled={isInClass}
+                                                className="form-checkbox h-5 w-5 text-purple-600"
+                                            />
+                                            <span className="text-3xl">{judge.emoji}</span>
+                                            <span className="font-semibold text-2xl">{judge.name}</span>
+                                        </label>
+                                        {isInClass && (
+                                            <div className="tooltip ml-auto">
+                                                <i className="fas fa-info-circle text-blue-500"></i>
+                                                <span className="tooltiptext">소속 반 경기에는 배정할 수 없습니다.</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex gap-3 mt-6 justify-end pt-4 border-t">
+                            <button onClick={onClose} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg touch-button text-lg">취소</button>
+                            <button onClick={handleSave} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg touch-button text-lg">저장</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        });
+
+        const ResultsContent = memo(({ grade, gradeInfo, config, jumpRecords, calculateTeamTotal, customDrumroll, customFanfare, onClose, audioContextRef }) => {
+            const [isRevealed, setIsRevealed] = useState(false);
+            const [revealCountdown, setRevealCountdown] = useState(5);
+            const [showEffects, setShowEffects] = useState(false);
+            const drumrollSourceRef = useRef(null);
+            const fanfareSourceRef = useRef(null);
+            const [drumrollBuffer, setDrumrollBuffer] = useState(null);
+            const [fanfareBuffer, setFanfareBuffer] = useState(null);
+
+            const resultCountdownColors = { '5': 'text-cyan-300', '4': 'text-lime-300', '3': 'text-yellow-300', '2': 'text-orange-400', '1': 'text-red-500' };
+
+            const stopAllSounds = useCallback(() => {
+                if (drumrollSourceRef.current) {
+                    try { drumrollSourceRef.current.stop(); } catch(e) {}
+                    drumrollSourceRef.current = null;
+                }
+                if (fanfareSourceRef.current) {
+                    try { fanfareSourceRef.current.stop(); } catch(e) {}
+                    fanfareSourceRef.current = null;
+                }
+            }, []);
+
+            useEffect(() => {
+                return () => stopAllSounds();
+            }, [stopAllSounds]);
+            
+            useEffect(() => {
+                let countdownInterval;
+                if (revealCountdown !== null && revealCountdown > 0) {
+                    if (audioContextRef.current && audioContextRef.current.state === 'running') {
+                        const context = audioContextRef.current;
+                        const osc = context.createOscillator();
+                        const gain = context.createGain();
+                        gain.gain.setValueAtTime(0.5, context.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(revealCountdown === 1 ? 880 : 440, context.currentTime);
+                        osc.connect(gain);
+                        gain.connect(context.destination);
+                        osc.start(context.currentTime);
+                        osc.stop(context.currentTime + 0.2);
+                    }
+                    countdownInterval = setInterval(() => {
+                        setRevealCountdown(prev => prev - 1);
+                    }, 1000);
+                } else if (revealCountdown === 0) {
+                    setIsRevealed(true);
+                    setRevealCountdown(null);
+                }
+                return () => clearInterval(countdownInterval);
+            }, [revealCountdown, audioContextRef]);
+
+            useEffect(() => {
+                const loadSound = async (src, setter) => {
+                    if (!src || !audioContextRef.current) {
+                        setter(null);
+                        return;
+                    }
+                    try {
+                        const response = await fetch(src);
+                        const arrayBuffer = await response.arrayBuffer();
+                        audioContextRef.current.decodeAudioData(arrayBuffer, (buffer) => setter(buffer));
+                    } catch (error) {
+                        console.error('Error loading custom sound:', error);
+                        setter(null);
+                    }
+                };
+                
+                loadSound(customDrumroll, setDrumrollBuffer);
+                loadSound(customFanfare, setFanfareBuffer);
+
+            }, [customDrumroll, customFanfare, audioContextRef]);
+
+            const rankings = useMemo(() => {
+                if (!gradeInfo || !jumpRecords) return [];
+                const results = [];
+                for (let i = 1; i <= gradeInfo.classes; i++) {
+                    const classNum = i;
+                    const totalScore = calculateTeamTotal(grade, classNum);
+                    const className = gradeInfo.classNames?.[classNum] || `${classNum}반`;
+                    results.push({ classNum, className, totalScore });
+                }
+                return results.sort((a, b) => b.totalScore - a.totalScore);
+            }, [grade, gradeInfo, calculateTeamTotal, jumpRecords]);
+
+            const maxScore = useMemo(() => Math.max(1, ...rankings.map(r => r.totalScore)), [rankings]);
+
+            const playSound = useCallback((buffer, loop = false) => {
+                if (!buffer || !audioContextRef.current) return null;
+                const context = audioContextRef.current;
+                if (context.state === 'suspended') context.resume();
+                const source = context.createBufferSource();
+                source.buffer = buffer;
+                source.loop = loop;
+                source.connect(context.destination);
+                source.start(0);
+                return source;
+            }, [audioContextRef]);
+            
+            useEffect(() => {
+                if (revealCountdown === 5) {
+                    if (audioContextRef.current && audioContextRef.current.state === 'running') {
+                        drumrollSourceRef.current = playSound(drumrollBuffer, true);
+                    } else {
+                        setTimeout(() => {
+                            if (audioContextRef.current && audioContextRef.current.state === 'running') {
+                               drumrollSourceRef.current = playSound(drumrollBuffer, true);
+                            }
+                        }, 100);
+                    }
+                }
+            }, [revealCountdown, drumrollBuffer, playSound, audioContextRef]);
+            
+            useEffect(() => {
+                if(isRevealed) {
+                    stopAllSounds();
+                    if (audioContextRef.current && audioContextRef.current.state === 'running') {
+                        fanfareSourceRef.current = playSound(fanfareBuffer, false);
+                    }
+                    setShowEffects(true);
+                }
+            }, [isRevealed, fanfareBuffer, playSound, stopAllSounds]);
+
+            const getOrdinal = (n) => {
+                const s = ["th", "st", "nd", "rd"];
+                const v = n % 100;
+                return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            }
+
+            const podiumOrder = [2, 1, 3];
+            
+            return (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center overflow-hidden">
+                    {showEffects && <><Confetti /><Fireworks /></>}
+                    {revealCountdown !== null && (
+                        <div className="absolute inset-0 bg-black bg-opacity-85 flex items-center justify-center z-[100]">
+                            <div key={revealCountdown} className={`font-black text-[30vw] fullscreen-countdown-animation ${resultCountdownColors[revealCountdown] || 'text-white'}`}>
+                                {revealCountdown}
+                            </div>
+                        </div>
+                    )}
+                    <button onClick={onClose} className="absolute top-4 right-4 text-white text-4xl font-bold z-50 p-4">✕</button>
+                    
+                    <div className={`w-full h-full flex flex-col items-center justify-center transition-opacity duration-1000 p-4 ${isRevealed ? 'opacity-100' : 'opacity-0'}`}>
+                        <div className="w-full max-w-6xl flex items-end justify-center gap-4 h-[70vh]">
+                            {rankings.length > 0 ? (
+                                rankings.length > 2 ? (
+                                    podiumOrder.map((order) => {
+                                        const rankIndex = order - 1;
+                                        if (rankIndex >= rankings.length) return null;
+                                        const team = rankings[rankIndex];
+                                        const heightPercentage = team.totalScore > 0 ? (team.totalScore / maxScore) * 80 : 5;
+                                        return (
+                                            <div key={team.classNum} className={`podium-${order} w-1/3 flex flex-col items-center justify-end p-4 rounded-t-lg shadow-2xl text-white podium-bar-animated ${order === 1 ? 'winner-glow-animated' : ''}`} style={{ height: `${heightPercentage}%` }}>
+                                                <div className="text-8xl md:text-9xl font-black podium-text podium-text-animated">{getOrdinal(order)}</div>
+                                                <div className="text-5xl md:text-6xl font-bold mt-2 podium-text podium-text-animated">{team.className}</div>
+                                                <div className="text-3xl md:text-4xl mt-1 font-medium bg-black/20 px-3 py-1 rounded-full podium-text-animated">{team.totalScore}점</div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    rankings.map((team, index) => {
+                                        const heightPercentage = team.totalScore > 0 ? (team.totalScore / maxScore) * 80 : 5;
+                                        return (
+                                            <div key={team.classNum} className={`podium-2-teams-${index+1} w-2/5 flex flex-col items-center justify-end p-4 rounded-t-lg shadow-2xl text-white podium-bar-animated ${index === 0 ? 'winner-glow-animated' : ''}`} style={{ height: `${heightPercentage}%` }}>
+                                                <div className="text-8xl md:text-9xl font-black podium-text podium-text-animated">{getOrdinal(index+1)}</div>
+                                                <div className="text-5xl md:text-6xl font-bold mt-2 podium-text podium-text-animated">{team.className}</div>
+                                                <div className="text-3xl md:text-4xl mt-1 font-medium bg-black/20 px-3 py-1 rounded-full podium-text-animated">{team.totalScore}점</div>
+                                            </div>
+                                        )
+                                    })
+                                )
+                            ) : <div className="text-white text-3xl">기록된 데이터가 없습니다.</div>}
+                        </div>
+                        <div className="podium-base w-full max-w-6xl h-8 rounded-b-lg shadow-inner"></div>
+                        {rankings.length > 3 && (
+                            <div className="mt-8 w-full max-w-md mx-auto">
+                                <h4 className="text-2xl font-bold text-center mb-2 text-white">전체 순위</h4>
+                                <ul className="space-y-1 max-h-48 overflow-y-auto">
+                                    {rankings.slice(3).map((team, index) => (
+                                        <li key={team.classNum} className="flex justify-between items-center bg-gray-700/50 text-white p-2 rounded-lg shadow">
+                                            <span className="font-bold text-xl">{getOrdinal(index + 4)}</span>
+                                            <span className="text-xl">{team.className}</span>
+                                            <span className="text-xl text-gray-300">{team.totalScore}점</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        });
+
+        const Confetti = () => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let width = window.innerWidth;
+                let height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+                const particles = [];
+                const colors = ["#ff6b6b", "#f06595", "#cc5de8", "#845ef7", "#5c7cfa", "#339af0", "#22b8cf", "#20c997", "#51cf66", "#94d82d", "#ffd43b", "#ff922b"];
+                for (let i = 0; i < 200; i++) { particles.push({ x: Math.random() * width, y: Math.random() * height - height, radius: Math.random() * 5 + 2, color: colors[Math.floor(Math.random() * colors.length)], vx: Math.random() * 4 - 2, vy: Math.random() * 5 + 2, angle: 0, spin: Math.random() < 0.5 ? -1 : 1 }); }
+                let animationFrameId;
+                const draw = () => {
+                    ctx.clearRect(0, 0, width, height);
+                    particles.forEach(p => {
+                        p.y += p.vy; p.x += p.vx; p.angle += p.spin * 0.1;
+                        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle); ctx.fillStyle = p.color; ctx.fillRect(-p.radius, -p.radius, p.radius * 2, p.radius * 2); ctx.restore();
+                        if (p.y > height + 20) { p.x = Math.random() * width; p.y = -20; }
+                    });
+                    animationFrameId = requestAnimationFrame(draw);
+                };
+                draw();
+                return () => cancelAnimationFrame(animationFrameId);
+            }, []);
+            return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-50" />;
+        };
+
+        const Fireworks = () => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let width = window.innerWidth;
+                let height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+                const fireworks = [];
+                const particles = [];
+                const colors = ["#ff6b6b", "#f06595", "#cc5de8", "#845ef7", "#5c7cfa", "#339af0", "#22b8cf", "#20c997", "#51cf66", "#94d82d", "#ffd43b", "#ff922b"];
+
+                function createFirework() {
+                    fireworks.push({
+                        x: Math.random() * width,
+                        y: height,
+                        tx: Math.random() * width,
+                        ty: Math.random() * height / 2,
+                        speed: 2,
+                        angle: Math.atan2(Math.random() * height / 2 - height, Math.random() * width - Math.random() * width),
+                        color: colors[Math.floor(Math.random() * colors.length)]
+                    });
+                }
+
+                function createParticles(x, y, color) {
+                    for (let i = 0; i < 50; i++) {
+                        particles.push({
+                            x: x, y: y,
+                            angle: Math.random() * Math.PI * 2,
+                            speed: Math.random() * 5 + 1,
+                            friction: 0.95,
+                            gravity: 0.1,
+                            alpha: 1,
+                            decay: Math.random() * 0.03 + 0.01,
+                            color: color
+                        });
+                    }
+                }
+
+                let animationFrameId;
+                const draw = () => {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.globalCompositeOperation = 'lighter';
+
+                    fireworks.forEach((f, i) => {
+                        f.x += Math.cos(f.angle) * f.speed;
+                        f.y += Math.sin(f.angle) * f.speed;
+                        ctx.fillStyle = f.color;
+                        ctx.beginPath();
+                        ctx.arc(f.x, f.y, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (Math.hypot(f.x - f.tx, f.y - f.ty) < 50) {
+                            createParticles(f.x, f.y, f.color);
+                            fireworks.splice(i, 1);
+                        }
+                    });
+
+                    particles.forEach((p, i) => {
+                        p.x += Math.cos(p.angle) * p.speed;
+                        p.y += Math.sin(p.angle) * p.speed + p.gravity;
+                        p.speed *= p.friction;
+                        p.alpha -= p.decay;
+                        if (p.alpha <= p.decay) particles.splice(i, 1);
+                        ctx.fillStyle = `rgba(${parseInt(p.color.slice(1,3),16)},${parseInt(p.color.slice(3,5),16)},${parseInt(p.color.slice(5,7),16)},${p.alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+
+                    if (Math.random() < 0.05) createFirework();
+                    animationFrameId = requestAnimationFrame(draw);
+                };
+                draw();
+                return () => cancelAnimationFrame(animationFrameId);
+            }, []);
+            return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-50" />;
+        };
+
+        const AppMenu = memo(({ saveData, loadData, handleSoundUpload, saveStatus, handleUndo, recordHistory, handleManualSave }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const saveStatusColor = {
+                '저장됨': 'bg-green-500',
+                '변경사항 있음': 'bg-orange-500 animate-pulse',
+                '저장 중...': 'bg-yellow-500 cursor-wait',
+                '저장 실패': 'bg-red-500'
+            };
+
+            return (
+                <div className="relative">
+                    <button onClick={() => setIsOpen(!isOpen)} className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform">
+                        <i className={`fas fa-cog text-xl transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}></i>
+                    </button>
+                    {isOpen && (
+                        <div className="absolute top-full right-0 mt-2 w-60 bg-white rounded-xl shadow-2xl p-2 z-50">
+                            <div className="flex flex-col gap-2">
+                                <button onClick={handleUndo} disabled={recordHistory.length === 0} className={`flex items-center justify-center gap-2 px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg touch-button text-base disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                    <span className="text-lg">🔄</span> 되돌리기
+                                </button>
+                                <button className={`flex items-center justify-center gap-2 px-3 py-2 ${saveStatusColor[saveStatus]} text-white font-bold rounded-lg touch-button text-base`}>💾 {saveStatus}</button>
+                                <button onClick={handleManualSave} className="flex items-center justify-center gap-2 px-3 py-2 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-lg touch-button text-base">
+                                    <i className="fas fa-download"></i> 수동 저장
+                                </button>
+                                <label className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg cursor-pointer touch-button text-base">📂 불러오기<input type="file" accept=".json" onChange={loadData} className="hidden" /></label>
+                                <hr/>
+                                <label className="flex items-center justify-center gap-2 px-3 py-2 bg-pink-300 hover:bg-pink-400 text-gray-800 font-bold rounded-lg cursor-pointer touch-button text-sm">⏱️ 1분 음원<input type="file" accept="audio/*" onChange={(e) => handleSoundUpload(e, 'oneMin')} className="hidden" /></label>
+                                <label className="flex items-center justify-center gap-2 px-3 py-2 bg-sky-300 hover:bg-sky-400 text-gray-800 font-bold rounded-lg cursor-pointer touch-button text-sm">⏰ 30초 음원<input type="file" accept="audio/*" onChange={(e) => handleSoundUpload(e, 'thirtySec')} className="hidden" /></label>
+                                <label className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-300 hover:bg-purple-400 text-gray-800 font-bold rounded-lg cursor-pointer touch-button text-sm">🎯 커스텀 음원<input type="file" accept="audio/*" onChange={(e) => handleSoundUpload(e, 'custom')} className="hidden" /></label>
+                                <label className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-300 hover:bg-emerald-400 text-gray-800 font-bold rounded-lg cursor-pointer touch-button text-sm">🥁 두구두구 음원<input type="file" accept="audio/*" onChange={(e) => handleSoundUpload(e, 'drumroll')} className="hidden" /></label>
+                                <label className="flex items-center justify-center gap-2 px-3 py-2 bg-amber-300 hover:bg-amber-400 text-gray-800 font-bold rounded-lg cursor-pointer touch-button text-sm">🎺 팡파레 음원<input type="file" accept="audio/*" onChange={(e) => handleSoundUpload(e, 'fanfare')} className="hidden" /></label>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        });
+
+        const TimerControlPanel = memo(({ startTimer, stopTimer, isTimerActive, timer, setTimer, delayTime, setDelayTime, customTimer, setCustomTimer, setIsFullscreenTimer, handleCustomStart }) => {
+            const handleCustomTimeChange = (part, value) => {
+                const numericValue = value.replace(/[^0-9]/g, '');
+                setCustomTimer(prev => ({...prev, [part]: numericValue}));
+            };
+            const adjustCustomTime = (part, amount) => {
+                setCustomTimer(prev => {
+                    const currentValue = parseInt(prev[part]) || 0;
+                    const newValue = Math.max(0, currentValue + amount);
+                    return {...prev, [part]: String(newValue)};
+                });
+            };
+            return (
+                <div className="flex flex-col items-center gap-4 p-4 animate-fadeIn">
+                    <div className={`text-8xl sm:text-9xl font-black ${isTimerActive ? 'text-red-600 timer-active' : 'text-gray-800'}`}>{String(timer.minutes).padStart(2, '0')}:{String(timer.seconds).padStart(2, '0')}</div>
+                    <div className="flex gap-2 sm:gap-4 flex-wrap justify-center items-center">
+                        <button onClick={() => startTimer(60, false)} className="px-4 py-2 sm:px-5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xl rounded-lg shadow touch-button">1분</button>
+                        <button onClick={() => startTimer(30, false)} className="px-4 py-2 sm:px-5 bg-green-500 hover:bg-green-600 text-white font-bold text-xl rounded-lg shadow touch-button">30초</button>
+
+                        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg time-input-group">
+                            <button onClick={() => adjustCustomTime('min', -1)} className="time-adjust-btn opacity-0 sm:opacity-100 px-2 py-1 bg-gray-200 rounded transition-opacity">-</button>
+                            <input type="text" inputMode="numeric" value={customTimer.min} onChange={(e) => handleCustomTimeChange('min', e.target.value)} className="w-12 text-center bg-transparent text-xl font-bold" />
+                            <span>분</span>
+                            <button onClick={() => adjustCustomTime('min', 1)} className="time-adjust-btn opacity-0 sm:opacity-100 px-2 py-1 bg-gray-200 rounded transition-opacity">+</button>
+                        </div>
+                        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg time-input-group">
+                            <button onClick={() => adjustCustomTime('sec', -1)} className="time-adjust-btn opacity-0 sm:opacity-100 px-2 py-1 bg-gray-200 rounded transition-opacity">-</button>
+                            <input type="text" inputMode="numeric" value={customTimer.sec} onChange={(e) => handleCustomTimeChange('sec', e.target.value)} className="w-12 text-center bg-transparent text-xl font-bold" />
+                            <span>초</span>
+                            <button onClick={() => adjustCustomTime('sec', 1)} className="time-adjust-btn opacity-0 sm:opacity-100 px-2 py-1 bg-gray-200 rounded transition-opacity">+</button>
+                        </div>
+                        <button onClick={handleCustomStart} className="px-4 py-2 sm:px-5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xl rounded-lg shadow touch-button">시작</button>
+
+                        <button onClick={stopTimer} className="px-4 py-2 sm:px-5 bg-red-500 hover:bg-red-600 text-white font-bold text-xl rounded-lg shadow touch-button">정지</button>
+                        <button onClick={() => setIsFullscreenTimer(true)} className="px-3 py-2 bg-gray-700 hover:bg-gray-800 text-white font-bold rounded-lg shadow touch-button text-xl">🖥️</button>
+                    </div>
+                </div>
+            );
+        });
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<JumpRopeApp />);
+    </script>
+</body>
+</html>
